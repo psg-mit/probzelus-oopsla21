@@ -7,12 +7,17 @@ let with_loc: type a. a -> a with_loc = begin
       loc = Location.none; }
 end
 
-let compile_const: constant -> Parsetree.constant = begin
+let compile_const: constant -> Parsetree.expression = begin
   fun c ->
     begin match c with
-    | Cint x -> Const.int x
-    | Cfloat x -> Const.float x
-    | Cstring x -> Const.string x
+    | Cbool x ->
+        let b =
+          with_loc (Longident.Lident (string_of_bool x))
+        in
+        Exp.construct b None
+    | Cint x -> Exp.constant (Const.int x)
+    | Cfloat x -> Exp.constant (Const.float x)
+    | Cstring x -> Exp.constant (Const.string x)
     end
 end
 
@@ -28,7 +33,7 @@ let rec compile_expr:
   type a. ?inferlib: string -> a expression -> Parsetree.expression = begin
   fun ?(inferlib="Infer_pf") e ->
     begin match e.expr with
-    | Econst c -> Exp.constant (compile_const c)
+    | Econst c -> compile_const c
     | Evar x -> Exp.ident (with_loc (Longident.Lident x.name))
     | Etuple l -> Exp.tuple (List.map compile_expr l)
     | Eapp (e1, e2) -> Exp.apply (compile_expr e1) [Nolabel, compile_expr e2]

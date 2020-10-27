@@ -1,4 +1,5 @@
 type constant =
+  | Cbool of bool
   | Cint of int
   | Cfloat of string
   | Cstring of string
