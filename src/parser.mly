@@ -59,6 +59,9 @@ simple_expr:
 (* Call *)
 | e1 = simple_expr LPAREN e2 = expr RPAREN
     { mk_expr (Eapp (e1, e2)) }
+(* Call Tuple *)
+| e1 = simple_expr LPAREN e2 = simple_expr COMMA el = separated_nonempty_list(COMMA, simple_expr) RPAREN
+    { mk_expr (Eapp (e1, mk_expr (Etuple (e2 :: el)))) }
 (* Probabilitic expressions *)
 | SAMPLE LPAREN e = expr RPAREN
     { mk_expr (Esample e) }
@@ -85,3 +88,4 @@ patt:
     { mk_patt (Pid { name = x }) }
 | LPAREN p1 = patt COMMA pl = separated_nonempty_list(COMMA, patt) RPAREN
     { mk_patt (Ptuple (p1::pl)) }
+| LPAREN RPAREN { mk_patt (Ptuple []) }
