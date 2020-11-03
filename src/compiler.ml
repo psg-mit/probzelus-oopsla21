@@ -47,7 +47,6 @@ let rec compile_expr:
    	      pvb_attributes = [];
    	      pvb_loc = Location.none; } ]
           (compile_expr e2)
-    | Efun (p, e) -> Exp.fun_ Nolabel None (compile_patt p) (compile_expr e)
     | Esample e ->
         let sample_id =
           Longident.Ldot (Longident.Lident inferlib, "sample")
@@ -70,9 +69,12 @@ let rec compile_expr:
 end
 
 let compile_decl : type a. a declaration -> Parsetree.value_binding = begin
-  fun d ->
-    let Ddecl (p, e) = d.decl in
-    Vb.mk (compile_patt p) (compile_expr e)
+  fun d -> 
+    match d.decl with
+    | Ddecl (p, e) ->
+      Vb.mk (compile_patt p) (compile_expr e)
+    | Dfun (p1, p2, e) ->
+      Vb.mk (compile_patt p1) (Exp.fun_ Nolabel None (compile_patt p2) (compile_expr e))
 end
 
 

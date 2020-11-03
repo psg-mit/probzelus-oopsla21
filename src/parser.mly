@@ -36,6 +36,9 @@ program:
 decl:
 | VAL x = patt EQUAL e = expr
     { { decl = Ddecl (x, e) } }
+(* Function *)
+| VAL x = patt EQUAL FUN p = patt ARROW e = expr
+    { { decl = Dfun (x, p, e) } }
 
 simple_expr:
 (* Parenthesized expression *)
@@ -79,9 +82,6 @@ expr:
 (* Local binding *)
 | LET x = patt EQUAL e1 = expr IN e2 = expr
     { mk_expr (Elet (x, e1, e2)) }
-(* Function *)
-| FUN p = patt ARROW e = expr
-    { mk_expr (Efun (p, e)) }
 
 patt:
 | x = IDENT

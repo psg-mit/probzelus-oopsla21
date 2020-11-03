@@ -25,7 +25,6 @@ type ('pattern, 'expr) expr_desc =
   | Eapp of 'expr * 'expr
   | Eif of 'expr * 'expr * 'expr
   | Elet of 'pattern * 'expr * 'expr
-  | Efun of 'pattern * 'expr
   | Esample of 'expr
   | Eobserve of 'expr * 'expr
   | Einfer of ('pattern * 'expr) * 'expr
@@ -37,6 +36,7 @@ type 'm expression =
 
 type ('p, 'e) decl_desc =
   | Ddecl of 'p * 'e
+  | Dfun of 'p * 'p * 'e
 [@@deriving show, map, fold]
 
 type 'm declaration =

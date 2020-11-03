@@ -33,14 +33,31 @@ let parse parsing_fun lexing_fun source_name =
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
   let c = Compiler.compile_program p in
-  Format.printf "%a@." Pprintast.structure c
+  Format.printf "%a@." Pprintast.structure c;
+  (* TODO: also analyze f_init *)
+  List.iter
+    Ast.(
+      fun d ->
+        match d.decl with
+        | Dfun
+            ( { patt = Pid { name = "f_step" }; _ },
+              { patt = Ptuple [ args; obs ]; _ },
+              e ) ->
+            let rec get p =
+              match p.patt with
+              | Pid { name } -> [ name ]
+              | Ptuple ps -> List.concat (List.map get ps)
+            in
+            Format.printf "m-consumed: %B" (Analysis.m_consumed (get args) (get obs) e)
+        | _ -> ())
+    p
 
-let () =
-  try
-    Arg.parse
-      []
-      compile_file
-      ""
-  with Error ->
-    exit 1
+    let () =
+    try
+      Arg.parse
+        []
+        compile_file
+        ""
+    with Error ->
+      exit 1
 
