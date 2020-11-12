@@ -1,3 +1,4 @@
+val f_init = (0., 0.)
 val f_step =
   fun ((x, y), ()) ->
     let x = sample (gaussian(0., 1.)) in

@@ -8,25 +8,37 @@ module Rep = struct
   type scalar = RVSet.t * RVSet.t
 
   (* The abstract representation of a uF term has the same shape as its type *)
-  type t = Rscalar of scalar | Rtuple of t list
+  type shape = Rscalar of scalar | Rtuple of t list
+
+  (* It also contains the set of RVs this term owns, independently of its substructure *)
+  and t = shape * RVSet.t
 
   let empty = Rscalar (RVSet.empty, RVSet.empty)
 
   (* Given two representations, conservatively represent a choice between them *)
-  let rec join rep1 rep2 =
-    match (rep1, rep2) with
-    | Rscalar (must1, may1), Rscalar (must2, may2) ->
-        Rscalar (RVSet.inter must1 must2, RVSet.union may1 may2)
-    | Rtuple rs1, Rtuple rs2 ->
-        let rec join' rs1 rs2 =
-          match (rs1, rs2) with
-          | [], [] -> []
-          | r1 :: rs1, r2 :: rs2 -> join r1 r2 :: join' rs1 rs2
-          | _ ->
-              failwith "Cannot join tuple representations of different length"
-        in
-        Rtuple (join' rs1 rs2)
-    | _ -> failwith "Cannot join scalar and tuple representations"
+  let rec join (rep1, own1) (rep2, own2) =
+    let r =
+      match (rep1, rep2) with
+      | Rscalar (must1, may1), Rscalar (must2, may2) ->
+          let must =
+            RVSet.union (RVSet.inter must1 must2)
+              (RVSet.union (RVSet.inter must1 own1) (RVSet.inter must2 own2))
+          in
+          Rscalar (must, RVSet.union may1 may2)
+      | Rtuple rs1, Rtuple rs2 ->
+          let rec join' rs1 rs2 =
+            match (rs1, rs2) with
+            | [], [] -> []
+            | (r1, o1) :: rs1, (r2, o2) :: rs2 ->
+                join (r1, RVSet.union o1 own1) (r2, RVSet.union o2 own2)
+                :: join' rs1 rs2
+            | _ ->
+                failwith "Cannot join tuple representations of different length"
+          in
+          Rtuple (join' rs1 rs2)
+      | _ -> failwith "Cannot join scalar and tuple representations"
+    in
+    (r, RVSet.union own1 own2)
 
   (* Given a scalar representation, extract its components *)
   let get = function
@@ -38,7 +50,7 @@ module Rep = struct
     | Rscalar (must, may) -> (must, may)
     | Rtuple rs ->
         List.fold_left
-          (fun (must, may) r ->
+          (fun (must, may) (r, _) ->
             let must', may' = fold r in
             (RVSet.union must must', RVSet.union may may'))
           (RVSet.empty, RVSet.empty) rs
@@ -70,58 +82,69 @@ module Evaluator (A : Analysis) = struct
       i'
 
   let eval (init : A.t) ctx e =
-    let rec eval (ctx : Rep.t VarMap.t) (state : A.t) e : Rep.t * A.t =
+    let rec eval (ctx : Rep.shape VarMap.t) (state : A.t) e : Rep.t * A.t =
       match e with
-      | Econst _ -> (Rep.empty, state)
-      | Evar { name } -> (VarMap.find name ctx, state)
+      | Econst _ -> ((Rep.empty, RVSet.empty), state)
+      | Evar { name } -> ((VarMap.find name ctx, RVSet.empty), state)
       | Esample e ->
           let v = new_var () in
-          let rep, state = eval ctx state e.expr in
+          let (rep, own), state = eval ctx state e.expr in
           let state = A.assume (Rep.get rep, state) v in
           let s = RVSet.singleton v in
-          (Rscalar (s, s), state)
+          ((Rscalar (s, s), RVSet.add v own), state)
       | Eobserve (e1, e2) ->
-          let rep, state = eval ctx state e1.expr in
+          let (rep, own1), state = eval ctx state e1.expr in
           let v = new_var () in
           let state = A.assume (Rep.get rep, state) v in
-          let rep', state = eval ctx state e2.expr in
+          let (rep', own2), state = eval ctx state e2.expr in
           let state = A.value (Rep.get rep', state) in
           let s = RVSet.singleton v in
           let state = A.observe (Rep.get rep', state) (s, s) in
-          (Rtuple [], state)
+          ((Rtuple [], RVSet.add v (RVSet.union own1 own2)), state)
       | Eif (e, e1, e2) ->
-          let rep, state = eval ctx state e.expr in
+          let (rep, own), state = eval ctx state e.expr in
           let state = A.value (Rep.get rep, state) in
-          let rep1, state1 = eval ctx state e1.expr in
-          let rep2, state2 = eval ctx state e2.expr in
-          (Rep.join rep1 rep2, A.join state1 state2)
+          let (rep1, own1), state1 = eval ctx state e1.expr in
+          let (rep2, own2), state2 = eval ctx state e2.expr in
+          let rep, own' = Rep.join (rep1, own1) (rep2, own2) in
+          ((rep, RVSet.union own own'), A.join state1 state2)
       | Eapp (_, e2) ->
-          let rep, state = eval ctx state e2.expr in
-          (Rscalar (Rep.fold rep), state)
+          let (rep, own), state = eval ctx state e2.expr in
+          ((Rscalar (Rep.fold rep), own), state)
       | Elet (p, e, e') ->
-          let rep, state = eval ctx state e.expr in
+          let (rep, own'), state = eval ctx state e.expr in
           let rec get_ctx ctx p rep =
             let open Rep in
+            let rec remove_own r =
+              match r with
+              | Rtuple rs ->
+                  Rtuple
+                    (List.map (fun (r, _) -> (remove_own r, RVSet.empty)) rs)
+              | _ -> r
+            in
             match (p, rep) with
-            | Pid { name }, _ -> VarMap.add name rep ctx
+            | Pid { name }, _ -> VarMap.add name (remove_own rep) ctx
             | Ptuple [], Rtuple [] -> ctx
-            | Ptuple (p :: ps), Rtuple (r :: rs) ->
+            | Ptuple (p :: ps), Rtuple ((r, _) :: rs) ->
                 get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
             | _, _ -> failwith "Representation and pattern mismatch"
           in
-          eval (get_ctx ctx p.patt rep) state e'.expr
+          let (rep, own), state = eval (get_ctx ctx p.patt rep) state e'.expr in
+          ((rep, RVSet.union own' own), state)
       | Etuple es ->
-          let rep, state =
+          let (rep, own), state =
             List.fold_left
-              (fun (acc, state) e ->
-                let rep, state = eval ctx state e.expr in
-                (rep :: acc, state))
-              ([], state) es
+              (fun ((acc, own), state) e ->
+                let (rep, own'), state = eval ctx state e.expr in
+                (((rep, own') :: acc, RVSet.union own own'), state))
+              (([], RVSet.empty), state)
+              es
           in
-          (Rtuple (List.rev rep), state)
+          ((Rtuple (List.rev rep), own), state)
       | Einfer _ -> failwith "Infer not implemented"
     in
-    eval ctx init e
+    let (rep, _), state = eval ctx init e in
+    (rep, state)
 end
 
 module Consumed = struct
@@ -147,7 +170,7 @@ module UnseparatedPaths = struct
 
   let init = (RVMap.empty, RVSet.empty)
 
-  let assume ((must, _), ((p, sep) : t)) v : t =
+  let assume ((_, may), ((p, sep) : t)) v : t =
     let update (v_p : int) (h : int RVMap.t) =
       match RVMap.find_opt v_p p with
       | None -> h
@@ -155,7 +178,7 @@ module UnseparatedPaths = struct
     in
     let p =
       RVMap.add v
-        (RVSet.fold update (RVSet.diff must sep) (RVMap.singleton v 0))
+        (RVSet.fold update (RVSet.diff may sep) (RVMap.singleton v 0))
         p
     in
     (p, sep)
@@ -184,7 +207,7 @@ let get_ctx init_rep state_vars obs_vars =
         let rec f rs ns =
           match (rs, ns) with
           | [], [] -> VarMap.empty
-          | r :: rs, n :: ns -> VarMap.add n r (f rs ns)
+          | (r, _) :: rs, n :: ns -> VarMap.add n r (f rs ns)
           | _ -> failwith "Program does not return correct state"
         in
         f rs state_vars
@@ -194,7 +217,7 @@ let get_ctx init_rep state_vars obs_vars =
 let m_consumed state_vars obs_vars f_init f_step =
   let module C = Evaluator (Consumed) in
   let rep, (add, rem) = C.eval Consumed.init VarMap.empty f_init.expr in
-  let (add, rem) = (RVSet.diff add rem, RVSet.empty) in
+  let add, rem = (RVSet.diff add rem, RVSet.empty) in
   let ctx = get_ctx rep state_vars obs_vars in
   let rep, (add, rem) = C.eval (add, rem) ctx f_step.expr in
   let _, may = Rep.fold rep in
@@ -221,7 +244,7 @@ let unseparated_paths state_vars obs_vars n_iters f_init f_step =
       else
         let ctx =
           match rep with
-          | Rtuple [ _; r ] -> get_ctx r state_vars obs_vars
+          | Rtuple [ _; (r, _) ] -> get_ctx r state_vars obs_vars
           | _ -> failwith "f_step does not return yielded value and new state"
         in
         run (p, sep) ctx new_max (n_iters - 1)
