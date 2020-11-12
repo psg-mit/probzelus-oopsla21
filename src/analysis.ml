@@ -4,19 +4,22 @@ module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
 
 module Rep = struct
-  (* Lower bound of used RVs, upper bound of used RVs *)
-  type scalar = RVSet.t * RVSet.t
+  (* Lower bound of used RVs, upper bound of used RVs, introduced RVs *)
+  type scalar = RVSet.t * RVSet.t * RVSet.t
 
   (* The abstract representation of a uF term has the same shape as its type *)
   type t = Rscalar of scalar | Rtuple of t list
 
-  let empty = Rscalar (RVSet.empty, RVSet.empty)
+  let empty = Rscalar (RVSet.empty, RVSet.empty, RVSet.empty)
 
   (* Given two representations, conservatively represent a choice between them *)
   let rec join rep1 rep2 =
     match (rep1, rep2) with
-    | Rscalar (must1, may1), Rscalar (must2, may2) ->
-        Rscalar (RVSet.inter must1 must2, RVSet.union may1 may2)
+    | Rscalar (must1, may1, intro1), Rscalar (must2, may2, intro2) ->
+        let intro = RVSet.union intro1 intro2 in
+        let must = RVSet.inter must1 must2 in
+        let may = RVSet.union may1 may2 in
+        Rscalar (RVSet.union intro must, RVSet.union intro may, intro)
     | Rtuple rs1, Rtuple rs2 ->
         let rec join' rs1 rs2 =
           match (rs1, rs2) with
@@ -30,18 +33,21 @@ module Rep = struct
 
   (* Given a scalar representation, extract its components *)
   let get = function
-    | Rscalar (must, may) -> (must, may)
+    | Rscalar (must, may, intro) -> (must, may, intro)
     | _ -> failwith "Unexpected tuple representation"
 
   (* Given a representation, merge it into a scalar and extract its components *)
   let rec fold = function
-    | Rscalar (must, may) -> (must, may)
+    | Rscalar (must, may, intro) -> (must, may, intro)
     | Rtuple rs ->
         List.fold_left
-          (fun (must, may) r ->
-            let must', may' = fold r in
-            (RVSet.union must must', RVSet.union may may'))
-          (RVSet.empty, RVSet.empty) rs
+          (fun (must, may, intro) r ->
+            let must', may', intro' = fold r in
+            ( RVSet.union must must',
+              RVSet.union may may',
+              RVSet.union intro intro' ))
+          (RVSet.empty, RVSet.empty, RVSet.empty)
+          rs
 end
 
 module type Analysis = sig
@@ -79,7 +85,7 @@ module Evaluator (A : Analysis) = struct
           let rep, state = eval ctx state e.expr in
           let state = A.assume (Rep.get rep, state) v in
           let s = RVSet.singleton v in
-          (Rscalar (s, s), state)
+          (Rscalar (s, s, s), state)
       | Eobserve (e1, e2) ->
           let rep, state = eval ctx state e1.expr in
           let v = new_var () in
@@ -87,7 +93,7 @@ module Evaluator (A : Analysis) = struct
           let rep', state = eval ctx state e2.expr in
           let state = A.value (Rep.get rep', state) in
           let s = RVSet.singleton v in
-          let state = A.observe (Rep.get rep', state) (s, s) in
+          let state = A.observe (Rep.get rep', state) (s, s, s) in
           (Rtuple [], state)
       | Eif (e, e1, e2) ->
           let rep, state = eval ctx state e.expr in
@@ -130,12 +136,13 @@ module Consumed = struct
 
   let init = (RVSet.empty, RVSet.empty)
 
-  let assume ((must, _), (add, rem)) v = (RVSet.add v add, RVSet.union rem must)
+  let assume ((must, _, _), (add, rem)) v =
+    (RVSet.add v add, RVSet.union rem must)
 
-  let observe ((must2, _), (add, rem)) (must1, _) =
+  let observe ((must2, _, _), (add, rem)) (must1, _, _) =
     (add, RVSet.union rem (RVSet.union must1 must2))
 
-  let value ((must, _), (add, rem)) = (add, RVSet.union rem must)
+  let value ((must, _, _), (add, rem)) = (add, RVSet.union rem must)
 
   let join (add1, rem1) (add2, rem2) =
     (RVSet.union add1 add2, RVSet.inter rem1 rem2)
@@ -147,7 +154,7 @@ module UnseparatedPaths = struct
 
   let init = (RVMap.empty, RVSet.empty)
 
-  let assume ((must, _), ((p, sep) : t)) v : t =
+  let assume ((must, _, _), ((p, sep) : t)) v : t =
     let update (v_p : int) (h : int RVMap.t) =
       match RVMap.find_opt v_p p with
       | None -> h
@@ -160,10 +167,10 @@ module UnseparatedPaths = struct
     in
     (p, sep)
 
-  let observe ((must2, _), (p, sep)) (must1, _) =
+  let observe ((must2, _, _), (p, sep)) (must1, _, _) =
     (p, RVSet.union sep (RVSet.union must1 must2))
 
-  let value ((must, _), (p, sep)) = (p, RVSet.union sep must)
+  let value ((must, _, _), (p, sep)) = (p, RVSet.union sep must)
 
   let path_union = RVMap.union (fun _ x y -> Some (max x y))
 
@@ -194,10 +201,10 @@ let get_ctx init_rep state_vars obs_vars =
 let m_consumed state_vars obs_vars f_init f_step =
   let module C = Evaluator (Consumed) in
   let rep, (add, rem) = C.eval Consumed.init VarMap.empty f_init.expr in
-  let (add, rem) = (RVSet.diff add rem, RVSet.empty) in
+  let add, rem = (RVSet.diff add rem, RVSet.empty) in
   let ctx = get_ctx rep state_vars obs_vars in
   let rep, (add, rem) = C.eval (add, rem) ctx f_step.expr in
-  let _, may = Rep.fold rep in
+  let _, may, _ = Rep.fold rep in
   RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
 
 let unseparated_paths state_vars obs_vars n_iters f_init f_step =
@@ -206,7 +213,7 @@ let unseparated_paths state_vars obs_vars n_iters f_init f_step =
     if n_iters = 0 then false
     else
       let rep, (p, sep) = UP.eval prev_state ctx f_step.expr in
-      let _, may = Rep.fold rep in
+      let _, may, _ = Rep.fold rep in
       let new_max =
         RVMap.fold
           (fun _ srcs ->
