@@ -114,13 +114,8 @@ module Evaluator (A : Analysis) = struct
           let (rep, own'), state = eval ctx state e.expr in
           let rec get_ctx ctx p rep =
             let open Rep in
-            let rec remove_own r =
-              match r with
-              | Rtuple rs -> Rtuple (List.map remove_own rs)
-              | _ -> r
-            in
             match (p, rep) with
-            | Pid { name }, _ -> VarMap.add name (remove_own rep) ctx
+            | Pid { name }, _ -> VarMap.add name rep ctx
             | Ptuple [], Rtuple [] -> ctx
             | Ptuple (p :: ps), Rtuple (r :: rs) ->
                 get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
