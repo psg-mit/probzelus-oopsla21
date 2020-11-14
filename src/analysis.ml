@@ -63,8 +63,8 @@ module type Analysis = sig
   (* Update an abstract state by assuming an RV *)
   val assume : Rep.scalar * t -> int -> t
 
-  (* Update an abstract state by observing an expression with another *)
-  val observe : Rep.scalar * t -> Rep.scalar -> t
+  (* Update an abstract state by observing an RV with an expression *)
+  val observe : Rep.scalar * t -> int -> t
 
   (* Update an abstract state by evaluating an expression *)
   val value : Rep.scalar * t -> t
@@ -98,8 +98,7 @@ module Evaluator (A : Analysis) = struct
           let state = A.assume (Rep.get rep, state) v in
           let (rep', own2), state = eval ctx state e2.expr in
           let state = A.value (Rep.get rep', state) in
-          let s = RVSet.singleton v in
-          let state = A.observe (Rep.get rep', state) (s, s) in
+          let state = A.observe (Rep.get rep', state) v in
           ((Rtuple [], RVSet.add v (RVSet.union own1 own2)), state)
       | Eif (e, e1, e2) ->
           let (rep, own), state = eval ctx state e.expr in
@@ -155,8 +154,8 @@ module Consumed = struct
 
   let assume ((must, _), (add, rem)) v = (RVSet.add v add, RVSet.union rem must)
 
-  let observe ((must2, _), (add, rem)) (must1, _) =
-    (add, RVSet.union rem (RVSet.union must1 must2))
+  let observe ((must, _), (add, rem)) v =
+    (add, RVSet.union rem (RVSet.add v must))
 
   let value ((must, _), (add, rem)) = (add, RVSet.union rem must)
 
@@ -183,8 +182,7 @@ module UnseparatedPaths = struct
     in
     (p, sep)
 
-  let observe ((must2, _), (p, sep)) (must1, _) =
-    (p, RVSet.union sep (RVSet.union must1 must2))
+  let observe ((must, _), (p, sep)) v = (p, RVSet.union sep (RVSet.add v must))
 
   let value ((must, _), (p, sep)) = (p, RVSet.union sep must)
 
