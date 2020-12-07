@@ -1,6 +1,6 @@
-(executable
- (name muf)
- (public_name muf)
+(library
+ (name muf_compiler_libs)
+ (public_name muf-compiler-libs)
  (libraries compiler-libs.common)
  (preprocess (pps ppx_deriving.show ppx_deriving.fold ppx_deriving.map))
  )

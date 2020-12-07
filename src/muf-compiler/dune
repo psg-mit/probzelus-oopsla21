@@ -1,0 +1,6 @@
+(executable
+ (package muf)
+ (name muf)
+ (public_name muf)
+ (libraries compiler-libs.common muf-compiler-libs)
+ )
