@@ -1,8 +1,13 @@
 type constant =
   | Cbool of bool
   | Cint of int
+  | Cint32 of int32
+  | Cint64 of int64
   | Cfloat of string
   | Cstring of string
+  | Cchar of char
+  | Cunit
+  | Cany
 [@@deriving show]
 
 type identifier =
@@ -12,6 +17,7 @@ type identifier =
 type 'p patt_desc =
   | Pid of identifier
   | Ptuple of 'p list
+  | Pany
 [@@deriving show, map, fold]
 
 type 'm pattern =
@@ -22,6 +28,8 @@ type ('pattern, 'expr) expr_desc =
   | Econst of constant
   | Evar of identifier
   | Etuple of 'expr list
+  | Erecord of (string * 'expr) list
+  | Efield of 'expr * string
   | Eapp of 'expr * 'expr
   | Eif of 'expr * 'expr * 'expr
   | Elet of 'pattern * 'expr * 'expr

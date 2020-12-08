@@ -7,7 +7,7 @@ let with_loc: type a. a -> a with_loc = begin
       loc = Location.none; }
 end
 
-let compile_const: constant -> Parsetree.expression = begin
+let rec compile_const: constant -> Parsetree.expression = begin
   fun c ->
     begin match c with
     | Cbool x ->
@@ -16,8 +16,17 @@ let compile_const: constant -> Parsetree.expression = begin
         in
         Exp.construct b None
     | Cint x -> Exp.constant (Const.int x)
+    | Cint32 x -> Exp.constant (Const.int32 x)
+    | Cint64 x -> Exp.constant (Const.int64 x)
     | Cfloat x -> Exp.constant (Const.float x)
     | Cstring x -> Exp.constant (Const.string x)
+    | Cchar x -> Exp.constant (Const.char x)
+    | Cunit -> Exp.construct (with_loc (Longident.Lident "")) None
+    | Cany ->
+        Exp.apply
+          (Exp.ident
+             (with_loc (Longident.Ldot (Longident.Lident "Obj", "magic"))))
+          [Nolabel, compile_const Cunit]
     end
 end
 
@@ -26,6 +35,7 @@ let rec compile_patt: type a. a pattern -> Parsetree.pattern = begin
     begin match p.patt with
     | Pid x -> Pat.var (with_loc x.name)
     | Ptuple l -> Pat.tuple (List.map compile_patt l)
+    | Pany -> Pat.any ()
     end
 end
 
@@ -36,6 +46,13 @@ let rec compile_expr:
     | Econst c -> compile_const c
     | Evar x -> Exp.ident (with_loc (Longident.Lident x.name))
     | Etuple l -> Exp.tuple (List.map compile_expr l)
+    | Erecord l ->
+        let compile_field (x, e) =
+          (with_loc (Longident.Lident x), compile_expr e)
+        in
+        Exp.record (List.map compile_field l) None
+    | Efield (e, x) ->
+        Exp.field (compile_expr e) (with_loc (Longident.Lident x))
     | Eapp (e1, e2) -> Exp.apply (compile_expr e1) [Nolabel, compile_expr e2]
     | Eif (e, e1, e2) ->
         Exp.ifthenelse (compile_expr e)

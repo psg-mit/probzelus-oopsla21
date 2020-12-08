@@ -46,6 +46,7 @@ let compile_file file =
                 match p.patt with
                 | Pid { name } -> [ name ]
                 | Ptuple ps -> List.concat (List.map get ps)
+                | Pany -> [ "__any" ]
               in
               (f_init, Some (e, get args, get obs))
           | Ddecl ({ patt = Pid { name = "f_init" }; _ }, e) -> (Some e, f_step)
