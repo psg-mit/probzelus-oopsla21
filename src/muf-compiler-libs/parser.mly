@@ -37,8 +37,8 @@ decl:
 | VAL x = patt EQUAL e = expr
     { { decl = Ddecl (x, e) } }
 (* Function *)
-| VAL x = patt EQUAL FUN p = patt ARROW e = expr
-    { { decl = Dfun (x, p, e) } }
+| VAL x = IDENT EQUAL FUN p = patt ARROW e = expr
+    { { decl = Dfun ({ name = x }, p, e) } }
 
 simple_expr:
 (* Parenthesized expression *)

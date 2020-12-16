@@ -28,11 +28,12 @@ type ('pattern, 'expr) expr_desc =
   | Econst of constant
   | Evar of identifier
   | Etuple of 'expr list
-  | Erecord of (string * 'expr) list
+  | Erecord of (string * 'expr) list * 'expr option
   | Efield of 'expr * string
   | Eapp of 'expr * 'expr
   | Eif of 'expr * 'expr * 'expr
   | Elet of 'pattern * 'expr * 'expr
+  | Esequence of 'expr * 'expr
   | Esample of 'expr
   | Eobserve of 'expr * 'expr
   | Einfer of ('pattern * 'expr) * 'expr
@@ -42,9 +43,21 @@ type 'm expression =
   { expr: ('m pattern, 'm expression) expr_desc; emeta: 'm }
 [@@deriving show, map, fold]
 
+type core_type =
+  | Tany
+  | Tvar of string
+  | Ttuple of core_type list
+  | T_constr of string * core_type list
+[@@deriving show, map, fold]
+
+type type_kind =
+  | TKrecord of (string * core_type) list
+[@@deriving show, map, fold]
+
 type ('p, 'e) decl_desc =
   | Ddecl of 'p * 'e
-  | Dfun of 'p * 'p * 'e
+  | Dfun of identifier * 'p * 'e
+  | Dtype of identifier * string list * type_kind
 [@@deriving show, map, fold]
 
 type 'm declaration =

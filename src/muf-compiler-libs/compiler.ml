@@ -21,7 +21,7 @@ let rec compile_const: constant -> Parsetree.expression = begin
     | Cfloat x -> Exp.constant (Const.float x)
     | Cstring x -> Exp.constant (Const.string x)
     | Cchar x -> Exp.constant (Const.char x)
-    | Cunit -> Exp.construct (with_loc (Longident.Lident "")) None
+    | Cunit -> Exp.construct (with_loc (Longident.Lident "()")) None
     | Cany ->
         Exp.apply
           (Exp.ident
@@ -46,11 +46,11 @@ let rec compile_expr:
     | Econst c -> compile_const c
     | Evar x -> Exp.ident (with_loc (Longident.Lident x.name))
     | Etuple l -> Exp.tuple (List.map compile_expr l)
-    | Erecord l ->
+    | Erecord (l, oe) ->
         let compile_field (x, e) =
           (with_loc (Longident.Lident x), compile_expr e)
         in
-        Exp.record (List.map compile_field l) None
+        Exp.record (List.map compile_field l) (Option.map compile_expr oe)
     | Efield (e, x) ->
         Exp.field (compile_expr e) (with_loc (Longident.Lident x))
     | Eapp (e1, e2) -> Exp.apply (compile_expr e1) [Nolabel, compile_expr e2]
@@ -64,6 +64,8 @@ let rec compile_expr:
    	      pvb_attributes = [];
    	      pvb_loc = Location.none; } ]
           (compile_expr e2)
+    | Esequence (e1, e2) ->
+        Exp.sequence (compile_expr e1) (compile_expr e2)
     | Esample e ->
         let sample_id =
           Longident.Ldot (Longident.Lident inferlib, "sample")
@@ -85,20 +87,47 @@ let rec compile_expr:
     end
 end
 
-let compile_decl : type a. a declaration -> Parsetree.value_binding = begin
-  fun d -> 
+let rec compile_core_type : core_type -> Parsetree.core_type = begin
+  fun t ->
+    match t with
+    | Tany -> Typ.any ()
+    | Tvar x -> Typ.var x
+    | Ttuple l -> Typ.tuple (List.map compile_core_type l)
+    | T_constr (x, l) ->
+        Typ.constr (with_loc (Longident.Lident x))
+          (List.map compile_core_type l)
+end
+
+let compile_type_kind : type_kind -> Parsetree.type_kind = begin
+  fun k ->
+    match k with
+    | TKrecord l ->
+        Ptype_record
+          (List.map (fun (x, t) ->
+               Type.field (with_loc x) (compile_core_type t))
+              l)
+end
+
+let compile_decl : type a. a declaration -> Parsetree.structure_item = begin
+  fun d ->
     match d.decl with
     | Ddecl (p, e) ->
-      Vb.mk (compile_patt p) (compile_expr e)
-    | Dfun (p1, p2, e) ->
-      Vb.mk (compile_patt p1) (Exp.fun_ Nolabel None (compile_patt p2) (compile_expr e))
+        Str.value Nonrecursive [ Vb.mk (compile_patt p) (compile_expr e) ]
+    | Dfun (f, p, e) ->
+        Str.value Nonrecursive
+          [ Vb.mk (Pat.var (with_loc f.name))
+              (Exp.fun_ Nolabel None (compile_patt p) (compile_expr e)) ]
+    | Dtype (t, params, k) ->
+        Str.type_ Recursive
+          [ Type.mk
+              ~params:(List.map (fun a -> (Typ.var a, Asttypes.Invariant))
+                         params)
+              ~kind:(compile_type_kind k)
+             (with_loc t.name) ]
 end
 
 
 let compile_program : type a. a program -> Parsetree.structure = begin
   fun p ->
-    List.map
-      (fun decl ->
-         Str.value Nonrecursive [ compile_decl decl ])
-      p
+    List.map compile_decl p
 end

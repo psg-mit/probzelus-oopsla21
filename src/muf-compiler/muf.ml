@@ -39,7 +39,7 @@ let compile_file file =
         fun (f_init, f_step) d ->
           match d.decl with
           | Dfun
-              ( { patt = Pid { name = "f_step" }; _ },
+              ( { name = "f_step" },
                 { patt = Ptuple [ args; obs ]; _ },
                 e ) ->
               let rec get p =

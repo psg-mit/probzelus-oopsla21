@@ -133,19 +133,12 @@ module Evaluator (A : Analysis) = struct
               es
           in
           ((Rtuple (List.rev rep), own), state)
-      | Erecord fs ->
-          let es =
-            List.map snd (List.sort (fun (x, _) (y, _) -> compare x y) fs)
-          in
-          let (rep, own), state =
-            List.fold_left
-              (fun ((acc, own), state) e ->
-                let (rep, own'), state = eval ctx state e.expr in
-                ((rep :: acc, RVSet.union own own'), state))
-              (([], RVSet.empty), state)
-              es
-          in
-          ((Rtuple (List.rev rep), own), state) (* XXX TO CHECK XXX *)
+      | Esequence (e1, e2) ->
+          let (rep1, own1), state1 = eval ctx state e1.expr in
+          let (rep2, own2), state2 = eval ctx state e2.expr in
+          let rep, own = Rep.join (rep1, own1) (rep2, own2) in
+          ((rep, own), A.join state1 state2)
+      | Erecord _ -> failwith "Record not implemented"
       | Efield _ -> failwith "Record access not implemented"
       | Einfer _ -> failwith "Infer not implemented"
     in
