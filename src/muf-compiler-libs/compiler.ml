@@ -77,6 +77,11 @@ let rec compile_expr:
         in
         Exp.apply (Exp.ident (with_loc observe_id))
           [ (Nolabel, compile_expr e1); (Nolabel, compile_expr e2) ]
+    | Efactor e ->
+        let factir_id =
+          Longident.Ldot (Longident.Lident inferlib, "factor")
+        in
+        Exp.apply (Exp.ident (with_loc factir_id)) [Nolabel, compile_expr e]
     | Einfer ((p, e), args) ->
         let infer_id =
           Longident.Ldot (Longident.Lident inferlib, "infer")

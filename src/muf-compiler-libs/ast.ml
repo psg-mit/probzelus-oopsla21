@@ -36,6 +36,7 @@ type ('pattern, 'expr) expr_desc =
   | Esequence of 'expr * 'expr
   | Esample of 'expr
   | Eobserve of 'expr * 'expr
+  | Efactor of 'expr
   | Einfer of ('pattern * 'expr) * 'expr
 [@@deriving show, map, fold]
 

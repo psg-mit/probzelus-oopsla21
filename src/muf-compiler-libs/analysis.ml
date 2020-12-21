@@ -100,6 +100,7 @@ module Evaluator (A : Analysis) = struct
           let state = A.value (Rep.get rep', state) in
           let state = A.observe (Rep.get rep', state) v in
           ((Rtuple [], RVSet.add v (RVSet.union own1 own2)), state)
+      | Efactor _ -> failwith "factor not implemented"
       | Eif (e, e1, e2) ->
           let (rep, own), state = eval ctx state e.expr in
           let state = A.value (Rep.get rep, state) in
