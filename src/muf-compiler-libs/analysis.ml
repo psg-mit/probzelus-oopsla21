@@ -148,19 +148,22 @@ end
 
 module Consumed = struct
   (* RVs introduced, RVs consumed *)
-  type t = RVSet.t * RVSet.t
+  type t = RVSet.t * RVSet.t * int RVMap.t
 
-  let init = (RVSet.empty, RVSet.empty)
+  let init = (RVSet.empty, RVSet.empty, RVMap.empty)
 
-  let assume ((must, _), (add, rem)) v = (RVSet.add v add, RVSet.union rem must)
+  let assume ((must, _), (add, rem, m)) v =
+    let l = RVSet.fold (fun v' acc -> max (RVMap.find v' m + 1) acc) must 0 in
+    (RVSet.add v add, RVSet.union rem must, RVMap.add v l m)
 
-  let observe ((must, _), (add, rem)) v =
-    (add, RVSet.union rem (RVSet.add v must))
+  let observe ((must, _), (add, rem, m)) v =
+    (add, RVSet.union rem (RVSet.add v must), m)
 
-  let value ((must, _), (add, rem)) = (add, RVSet.union rem must)
+  let value ((must, _), (add, rem, m)) = (add, RVSet.union rem must, m)
 
-  let join (add1, rem1) (add2, rem2) =
-    (RVSet.union add1 add2, RVSet.inter rem1 rem2)
+  let join (add1, rem1, m1) (add2, rem2, m2) =
+    let m = RVMap.union (fun _ l1 l2 -> Some (max l1 l2)) m1 m2 in
+    (RVSet.union add1 add2, RVSet.inter rem1 rem2, m)
 end
 
 module UnseparatedPaths = struct
@@ -214,12 +217,15 @@ let get_ctx init_rep state_vars obs_vars =
 
 let m_consumed state_vars obs_vars f_init f_step =
   let module C = Evaluator (Consumed) in
-  let rep, (add, rem) = C.eval Consumed.init VarMap.empty f_init.expr in
+  let rep, (add, rem, m) = C.eval Consumed.init VarMap.empty f_init.expr in
   let add, rem = (RVSet.diff add rem, RVSet.empty) in
   let ctx = get_ctx rep state_vars obs_vars in
-  let rep, (add, rem) = C.eval (add, rem) ctx f_step.expr in
+  let rep, (add, rem, m) = C.eval (add, rem, m) ctx f_step.expr in
   let _, may = Rep.fold rep in
-  RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
+  let m =
+    RVMap.fold (fun _ l acc -> max l acc) m 0
+  in
+  (RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may), m)
 
 let unseparated_paths state_vars obs_vars n_iters f_init f_step =
   let module UP = Evaluator (UnseparatedPaths) in

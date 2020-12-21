@@ -55,8 +55,8 @@ let compile_file file =
   in
   match (f_init, f_step) with
   | Some f_init, Some (f_step, args, obs) ->
-      Format.printf "m-consumed: %B\n"
-        (Analysis.m_consumed args obs f_init f_step);
+      let success, m = Analysis.m_consumed args obs f_init f_step in
+      Format.printf "m-consumed: %B, m=%d\n" success m;
       Format.printf "unseparated_paths: %B\n"
         (Analysis.unseparated_paths args obs 10 f_init f_step)
   | None, _ -> Format.printf "Missing f_init\n"
