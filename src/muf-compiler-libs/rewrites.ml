@@ -1,14 +1,5 @@
 open Ast
-
-let eunit m = { expr = Econst Cunit; emeta = m }
-
-let is_value expr =
-  let rec is_value b expr =
-    match expr.expr with
-    | Eapp _ | Esample _ | Eobserve _ | Einfer _ -> false
-    | e -> b && fold_expr_desc (fun b _ -> b) is_value b e
-  in
-  is_value true expr
+open Muf_utils
 
 let rec subst x expr1 expr2 =
   match expr2.expr with
