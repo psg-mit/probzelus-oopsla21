@@ -4,7 +4,7 @@ open Muf_utils
 let rec subst x expr1 expr2 =
   match expr2.expr with
   | Evar y -> if x = y then expr1 else expr2
-  | Elet ({ patt = Pid y; _ } as p, e1, e2) when x = y ->
+  | Elet (p, e1, e2) when SSet.mem x.name (fv_patt p) ->
       { expr2 with expr = Elet(p, subst x expr1 e1, e2) }
   | _ ->
       let desc = map_expr_desc (fun p -> p) (subst x expr1) expr2.expr in
@@ -12,11 +12,8 @@ let rec subst x expr1 expr2 =
 
 let rec constant_propagation expr =
   match map_expr_desc (fun p -> p) constant_propagation expr.expr with
-  | Elet ({ patt = Pid x; _ }, e1, e2) as e ->
-      if is_value e1 then subst x e1 e2
-      else { expr with expr = e }
+  | Elet ({ patt = Pid x; _ }, e1, e2) when is_value e1 -> subst x e1 e2
   | e -> { expr with expr = e }
-
 
 let rec eq_patt_expr patt expr =
   match patt.patt, expr.expr with
@@ -55,4 +52,10 @@ let rec simplify_lets expr =
       | None -> e2
       | Some (p, e1) -> { expr with expr = Elet(p, e1, e2) }
       end
+  | e -> { expr with expr = e }
+
+let rec single_use expr =
+  match map_expr_desc (fun p -> p) single_use expr.expr with
+  | Elet({ patt = Pid x; _ }, e1, e2) when occurences x.name e2 = 1 ->
+      subst x e1 e2
   | e -> { expr with expr = e }

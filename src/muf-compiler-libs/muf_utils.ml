@@ -37,7 +37,19 @@ let rec fv_expr expr =
 let is_value expr =
   let rec is_value b expr =
     match expr.expr with
+    | Erecord (_, Some _)
     | Eapp _ | Esample _ | Eobserve _ | Einfer _ -> false
     | e -> b && fold_expr_desc (fun b _ -> b) is_value b e
   in
   is_value true expr
+
+let occurences x expr =
+  let rec occurences n expr =
+    match expr.expr with
+    | Evar y -> if x = y.name then n + 1 else n
+    | Elet (p, e1, e2) ->
+        let n = occurences n e1 in
+        if SSet.mem x (fv_patt p) then n else occurences n e2
+    | e -> fold_expr_desc (fun n _ -> n) occurences n e
+  in
+  occurences 0 expr
