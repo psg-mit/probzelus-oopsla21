@@ -59,3 +59,13 @@ let rec single_use expr =
   | Elet({ patt = Pid x; _ }, e1, e2) when occurences x.name e2 = 1 ->
       subst x e1 e2
   | e -> { expr with expr = e }
+
+let rec merge_record_update expr =
+  match map_expr_desc (fun p -> p) merge_record_update expr.expr with
+  | Erecord (l2, (Some { expr = Erecord(l1, Some r); _ })) as e ->
+      let diff =
+        List.for_all (fun (x, _) -> List.for_all (fun (y, _) -> x <> y) l2) l1
+      in
+      if diff then { expr with expr = Erecord(l1 @ l2, Some r) }
+      else { expr with expr = e }
+  | e -> { expr with expr = e }
