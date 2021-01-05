@@ -13,6 +13,16 @@ let rec subst x expr1 expr2 =
 let rec constant_propagation expr =
   match map_expr_desc (fun p -> p) constant_propagation expr.expr with
   | Elet ({ patt = Pid x; _ }, e1, e2) when is_value e1 -> subst x e1 e2
+  | Elet (({ patt = Ptuple ({ patt = Pid x; _ }:: pl); _ } as p),
+          ({ expr = Etuple (e :: el); _ } as e1), e2)
+    when is_value e ->
+      begin match pl, el with
+      | [], _ | _, [] -> assert false
+      | [p'], [e'] -> { expr with expr = Elet(p', e', subst x e e2) }
+      | _, _ -> { expr with expr = Elet({ p with patt = Ptuple pl },
+                                        { e1 with expr = Etuple el },
+                                        subst x e e2) }
+      end
   | e -> { expr with expr = e }
 
 let rec eq_patt_expr patt expr =

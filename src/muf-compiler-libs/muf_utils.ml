@@ -37,8 +37,8 @@ let rec fv_expr expr =
 let is_value expr =
   let rec is_value b expr =
     match expr.expr with
-    | Erecord (_, Some _)
-    | Eapp _ | Esample _ | Eobserve _ | Einfer _ -> false
+    | Erecord (_, Some _) | Eapp _ | Eif _  | Elet _ | Esequence _
+    | Esample _ | Eobserve _ | Einfer _ -> false
     | e -> b && fold_expr_desc (fun b _ -> b) is_value b e
   in
   is_value true expr
