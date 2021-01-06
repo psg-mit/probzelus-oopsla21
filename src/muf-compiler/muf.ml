@@ -31,11 +31,11 @@ let parse parsing_fun lexing_fun source_name =
 
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
-  let c = Compiler.compile_program p in
+  let c = Zlcompilerlibs.Muf_gencode.compile_program p in
   Format.printf "%a@." Pprintast.structure c;
   let f_init, f_step =
     List.fold_left
-      Ast.(
+      Zlcompilerlibs.Muf.(
         fun (f_init, f_step) d ->
           match d.decl with
           | Dfun

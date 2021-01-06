@@ -1,4 +1,5 @@
-open Ast
+open Zlcompilerlibs.Muf
+
 module VarMap = Map.Make (String)
 module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
