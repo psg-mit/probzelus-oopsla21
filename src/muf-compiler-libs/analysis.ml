@@ -1,5 +1,4 @@
 open Zlcompilerlibs.Muf
-
 module VarMap = Map.Make (String)
 module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
@@ -94,10 +93,14 @@ module Evaluator (A : Analysis) = struct
       i := i';
       i'
 
-  let rec placeholder p = let open Rep in match p.patt with
-  | Pid _ -> let i = new_var () in Rscalar (RVSet.singleton i, RVSet.singleton i)
-  | Ptuple ps -> Rtuple (List.map placeholder ps)
-  | Pany -> Rep.empty
+  let rec placeholder p =
+    let open Rep in
+    match p.patt with
+    | Pid _ ->
+        let i = new_var () in
+        Rscalar (RVSet.singleton i, RVSet.singleton i)
+    | Ptuple ps -> Rtuple (List.map placeholder ps)
+    | Pany -> Rep.empty
 
   let eval (init : A.t) check_infer ctx e =
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
@@ -148,7 +151,7 @@ module Evaluator (A : Analysis) = struct
       | Esequence _ -> failwith "Sequence not implemented"
       | Einfer ((p, e), e') ->
           let (rep, own), state = eval ctx state e'.expr in
-          if check_infer (p, e) then ((rep, own), state) else raise Infer
+          if check_infer p e then ((rep, own), state) else raise Infer
     in
     let (rep, _), state = eval ctx init e in
     (rep, state)
@@ -160,8 +163,7 @@ module Consumed = struct
 
   let init = (RVSet.empty, RVSet.empty)
 
-  let assume ((must, _), (add, rem)) v =
-    (RVSet.add v add, RVSet.union rem must)
+  let assume ((must, _), (add, rem)) v = (RVSet.add v add, RVSet.union rem must)
 
   let observe ((must, _), (add, rem)) v =
     (add, RVSet.union rem (RVSet.add v must))
@@ -205,20 +207,18 @@ end
 let m_consumed p e =
   let module C = Evaluator (Consumed) in
   let rec eval ctx e = C.eval Consumed.init check_infer ctx e
-  and check_infer (p, e) =
-    let rep = C.placeholder p in
-    let rep, (add, rem) = eval (get_ctx VarMap.empty p.patt rep) e.expr in
+  and check_infer p e =
+    let rep, (add, rem) = eval' e p in
     let _, may = Rep.fold rep in
     RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
-  in
-  eval (get_ctx VarMap.empty p.patt (C.placeholder p)) e.expr
+  and eval' e p = eval (get_ctx VarMap.empty p.patt (C.placeholder p)) e.expr in
+  eval' e p
 
 let unseparated_paths n_iters p e =
   let module UP = Evaluator (UnseparatedPaths) in
   let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ctx e
-  and check_infer (p, e) =
-    let rep = UP.placeholder p in
-    match (p.patt, rep) with
+  and check_infer p e =
+    match (p.patt, UP.placeholder p) with
     | Ptuple [ state_p; obs_p ], Rtuple [ state_rep; obs_rep ] ->
         let obs_ctx = get_ctx VarMap.empty obs_p.patt obs_rep in
         let rec run (p, sep) prev_state prev_max n_iters =
@@ -248,4 +248,6 @@ let unseparated_paths n_iters p e =
         run UnseparatedPaths.init state_rep Int.min_int n_iters
     | _ -> failwith "step and infer must specify state and input"
   in
-  eval UnseparatedPaths.init (get_ctx VarMap.empty p.patt (UP.placeholder p)) e.expr
+  eval UnseparatedPaths.init
+    (get_ctx VarMap.empty p.patt (UP.placeholder p))
+    e.expr

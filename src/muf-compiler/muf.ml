@@ -31,34 +31,27 @@ let parse parsing_fun lexing_fun source_name =
 
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
-  let f_init, f_step =
+  let module SMap = Map.Make (String) in
     List.fold_left
       Zlcompilerlibs.Muf.(
-        fun (f_init, f_step) d ->
+        fun funcs d ->
           match d.decl with
-          | Dfun ({ name = "main_step" }, patt, e) -> (f_init, Some (e, patt))
-          | Ddecl ({ patt = Pid { name = "main_init" }; _ }, e) ->
-              (Some e, f_step)
-          | _ -> (f_init, f_step))
-      (None, None) p
-  in
-  match (f_init, f_step) with
-  | Some _, Some (f_step, p) ->
-      let success =
-        try
-          ignore (Analysis.m_consumed p f_step);
-          true
-        with Analysis.Infer -> false
-      in
-      Format.printf "m-consumed: %B\n" success;
-      let success =
-        try
-          ignore (Analysis.unseparated_paths 10 p f_step);
-          true
-        with Analysis.Infer -> false
-      in
-      Format.printf "unseparated_paths: %B\n" success
-  | None, _ -> Format.printf "Missing main_init\n"
-  | _, None -> Format.printf "Missing main_step\n"
+          | Dfun ({ name = "main_step" }, p, e) -> let success =
+            try
+              ignore (Analysis.m_consumed p e);
+              true
+            with Analysis.Infer -> false
+          in
+          Format.printf "m-consumed: %B\n" success;
+          let success =
+            try
+              ignore (Analysis.unseparated_paths 10 p e);
+              true
+            with Analysis.Infer -> false
+          in
+          Format.printf "unseparated_paths: %B\n" success;
+          exit 0
+          | _ -> funcs)
+      SMap.empty p |> ignore
 
 let () = try Arg.parse [] compile_file "" with Error -> exit 1
