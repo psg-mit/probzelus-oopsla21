@@ -1,5 +1,5 @@
 %{
-  open Zlcompilerlibs.Muf
+  open Muf
 
   let mk_expr e =
     { expr = e; emeta = (); }
@@ -25,7 +25,7 @@
 %token EOF
 
 
-%start <unit Zlcompilerlibs.Muf.program> program
+%start <unit Muf.program> program
 
 %%
 

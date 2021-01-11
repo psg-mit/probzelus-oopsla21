@@ -33,7 +33,7 @@ let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
   let module SMap = Map.Make (String) in
     List.fold_left
-      Zlcompilerlibs.Muf.(
+      Muf.(
         fun funcs d ->
           match d.decl with
           | Dfun ({ name = "main_step" }, p, e) -> let success =
