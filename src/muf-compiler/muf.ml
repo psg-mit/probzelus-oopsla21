@@ -31,8 +31,6 @@ let parse parsing_fun lexing_fun source_name =
 
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
-  let c = Zlcompilerlibs.Muf_gencode.compile_program p in
-  Format.printf "%a@." Pprintast.structure c;
   let f_init, f_step =
     List.fold_left
       Zlcompilerlibs.Muf.(
@@ -46,19 +44,18 @@ let compile_file file =
   in
   match (f_init, f_step) with
   | Some _, Some (f_step, p) ->
-      let ctx = Analysis.init_ctx p in
       let success =
         try
-          ignore (Analysis.m_consumed ctx f_step);
+          ignore (Analysis.m_consumed p f_step);
           true
-        with _ -> false
+        with Analysis.Infer -> false
       in
       Format.printf "m-consumed: %B\n" success;
       let success =
         try
-          ignore (Analysis.unseparated_paths 10 ctx f_step);
+          ignore (Analysis.unseparated_paths 10 p f_step);
           true
-        with _ -> false
+        with Analysis.Infer -> false
       in
       Format.printf "unseparated_paths: %B\n" success
   | None, _ -> Format.printf "Missing main_init\n"
