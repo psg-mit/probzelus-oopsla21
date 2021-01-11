@@ -38,28 +38,30 @@ let compile_file file =
       Zlcompilerlibs.Muf.(
         fun (f_init, f_step) d ->
           match d.decl with
-          | Dfun
-              ( { name = "f_step" },
-                { patt = Ptuple [ args; obs ]; _ },
-                e ) ->
-              let rec get p =
-                match p.patt with
-                | Pid { name } -> [ name ]
-                | Ptuple ps -> List.concat (List.map get ps)
-                | Pany -> [ "__any" ]
-              in
-              (f_init, Some (e, get args, get obs))
-          | Ddecl ({ patt = Pid { name = "f_init" }; _ }, e) -> (Some e, f_step)
+          | Dfun ({ name = "main_step" }, patt, e) -> (f_init, Some (e, patt))
+          | Ddecl ({ patt = Pid { name = "main_init" }; _ }, e) ->
+              (Some e, f_step)
           | _ -> (f_init, f_step))
       (None, None) p
   in
   match (f_init, f_step) with
-  | Some f_init, Some (f_step, args, obs) ->
-      let success, m = Analysis.m_consumed args obs f_init f_step in
-      Format.printf "m-consumed: %B, m=%d\n" success m;
-      Format.printf "unseparated_paths: %B\n"
-        (Analysis.unseparated_paths args obs 10 f_init f_step)
-  | None, _ -> Format.printf "Missing f_init\n"
-  | _, None -> Format.printf "Missing f_step\n"
+  | Some _, Some (f_step, p) ->
+      let ctx = Analysis.init_ctx p in
+      let success =
+        try
+          ignore (Analysis.m_consumed ctx f_step);
+          true
+        with _ -> false
+      in
+      Format.printf "m-consumed: %B\n" success;
+      let success =
+        try
+          ignore (Analysis.unseparated_paths 10 ctx f_step);
+          true
+        with _ -> false
+      in
+      Format.printf "unseparated_paths: %B\n" success
+  | None, _ -> Format.printf "Missing main_init\n"
+  | _, None -> Format.printf "Missing main_step\n"
 
 let () = try Arg.parse [] compile_file "" with Error -> exit 1

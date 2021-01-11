@@ -74,6 +74,15 @@ module type Analysis = sig
   val join : t -> t -> t
 end
 
+let rec get_ctx ctx p rep =
+  let open Rep in
+  match (p, rep) with
+  | Pid { name }, _ -> VarMap.add name rep ctx
+  | Ptuple [], Rtuple [] -> ctx
+  | Ptuple (p :: ps), Rtuple (r :: rs) ->
+      get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
+  | _, _ -> failwith "Representation and pattern mismatch"
+
 module Evaluator (A : Analysis) = struct
   let new_var =
     let i = ref 0 in
@@ -82,7 +91,10 @@ module Evaluator (A : Analysis) = struct
       i := i';
       i'
 
-  let eval (init : A.t) ctx e =
+  (* Raised when an inner infer fails *)
+  exception Infer
+
+  let eval (init : A.t) check_infer ctx e =
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
@@ -114,15 +126,6 @@ module Evaluator (A : Analysis) = struct
           ((Rscalar (Rep.fold rep), own), state)
       | Elet (p, e, e') ->
           let (rep, own'), state = eval ctx state e.expr in
-          let rec get_ctx ctx p rep =
-            let open Rep in
-            match (p, rep) with
-            | Pid { name }, _ -> VarMap.add name rep ctx
-            | Ptuple [], Rtuple [] -> ctx
-            | Ptuple (p :: ps), Rtuple (r :: rs) ->
-                get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
-            | _, _ -> failwith "Representation and pattern mismatch"
-          in
           let (rep, own), state = eval (get_ctx ctx p.patt rep) state e'.expr in
           ((rep, RVSet.union own' own), state)
       | Etuple es ->
@@ -135,14 +138,12 @@ module Evaluator (A : Analysis) = struct
               es
           in
           ((Rtuple (List.rev rep), own), state)
-      | Esequence (e1, e2) ->
-          let (rep1, own1), state1 = eval ctx state e1.expr in
-          let (rep2, own2), state2 = eval ctx state e2.expr in
-          let rep, own = Rep.join (rep1, own1) (rep2, own2) in
-          ((rep, own), A.join state1 state2)
       | Erecord _ -> failwith "Record not implemented"
       | Efield _ -> failwith "Record access not implemented"
-      | Einfer _ -> failwith "Infer not implemented"
+      | Esequence _ -> failwith "Sequence not implemented"
+      | Einfer ((p, e), e') ->
+          let (rep, own), state = eval ctx state e'.expr in
+          if check_infer ((p, rep), e) then ((rep, own), state) else raise Infer
     in
     let (rep, _), state = eval ctx init e in
     (rep, state)
@@ -198,63 +199,58 @@ module UnseparatedPaths = struct
   let join (p1, sep1) (p2, sep2) = (all_path_union p1 p2, RVSet.inter sep1 sep2)
 end
 
-let get_ctx init_rep state_vars obs_vars =
-  let open Rep in
-  let ctx =
-    match init_rep with
-    | Rscalar r -> (
-        match state_vars with
-        | [ name ] -> VarMap.singleton name (Rscalar r)
-        | _ -> failwith "Program does not return entire state" )
-    | Rtuple rs ->
-        let rec f rs ns =
-          match (rs, ns) with
-          | [], [] -> VarMap.empty
-          | r :: rs, n :: ns -> VarMap.add n r (f rs ns)
-          | _ -> failwith "Program does not return correct state"
-        in
-        f rs state_vars
-  in
-  List.fold_left (fun ctx x -> VarMap.add x Rep.empty ctx) ctx obs_vars
+let rec init_ctx p =
+  match p.patt with
+  | Pid { name; _ } -> VarMap.singleton name Rep.empty
+  | Ptuple ps ->
+      List.fold_left (VarMap.union failwith) VarMap.empty (List.map init_ctx ps)
+  | Pany -> VarMap.empty
 
-let m_consumed state_vars obs_vars f_init f_step =
+let m_consumed ctx e =
   let module C = Evaluator (Consumed) in
-  let rep, (add, rem, m) = C.eval Consumed.init VarMap.empty f_init.expr in
-  let add, rem = (RVSet.diff add rem, RVSet.empty) in
-  let ctx = get_ctx rep state_vars obs_vars in
-  let rep, (add, rem, m) = C.eval (add, rem, m) ctx f_step.expr in
-  let _, may = Rep.fold rep in
-  let m =
-    RVMap.fold (fun _ l acc -> max l acc) m 0
+  let rec eval ctx e = C.eval Consumed.init check_infer ctx e
+  and check_infer ((p, rep), e) =
+    let _, may = Rep.fold rep in
+    RVSet.is_empty may
+    &&
+    let rep, (add, rem, _) = eval (get_ctx VarMap.empty p.patt rep) e.expr in
+    let _, may = Rep.fold rep in
+    RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
   in
-  (RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may), m)
+  eval ctx e.expr
 
-let unseparated_paths state_vars obs_vars n_iters f_init f_step =
+let unseparated_paths n_iters ctx e =
   let module UP = Evaluator (UnseparatedPaths) in
-  let rec run prev_state ctx prev_max n_iters =
-    if n_iters = 0 then false
-    else
-      let rep, (p, sep) = UP.eval prev_state ctx f_step.expr in
-      let _, may = Rep.fold rep in
-      let new_max =
-        RVMap.fold
-          (fun _ srcs ->
+  let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ctx e
+  and check_infer ((p, rep), e) =
+    match (p.patt, rep) with
+    | Ptuple [ state_p; obs_p ], Rtuple [ state_rep; obs_rep ] ->
+        let obs_ctx = get_ctx VarMap.empty obs_p.patt obs_rep in
+        let rec run (p, sep) prev_state prev_max n_iters =
+          n_iters > 0
+          &&
+          let rep, (p, sep) =
+            eval (p, sep) (get_ctx obs_ctx state_p.patt prev_state) e.expr
+          in
+          let _, may = Rep.fold rep in
+          let new_max =
             RVMap.fold
-              (fun src len acc ->
-                if RVSet.mem src may then max len acc else acc)
-              srcs)
-          (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
-          prev_max
-      in
-      if new_max = prev_max then true
-      else
-        let ctx =
+              (fun _ srcs ->
+                RVMap.fold
+                  (fun src len acc ->
+                    if RVSet.mem src may then max len acc else acc)
+                  srcs)
+              (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
+              prev_max
+          in
+          new_max = prev_max
+          ||
           match rep with
-          | Rtuple [ _; r ] -> get_ctx r state_vars obs_vars
-          | _ -> failwith "f_step does not return yielded value and new state"
+          | Rtuple [ _; new_state ] ->
+              run (p, sep) new_state new_max (n_iters - 1)
+          | _ -> failwith "step does not return output and new state"
         in
-        run (p, sep) ctx new_max (n_iters - 1)
+        run UnseparatedPaths.init state_rep Int.min_int n_iters
+    | _ -> failwith "step and infer must specify state and input"
   in
-  let rep, state = UP.eval UnseparatedPaths.init VarMap.empty f_init.expr in
-  let ctx = get_ctx rep state_vars obs_vars in
-  run state ctx Int.min_int n_iters
+  eval UnseparatedPaths.init ctx e.expr
