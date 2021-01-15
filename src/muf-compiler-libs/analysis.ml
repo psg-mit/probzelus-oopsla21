@@ -101,6 +101,7 @@ module Rep = struct
     in
     (subst' f, flat_map must_mapper own)
 end
+
 module type Analysis = sig
   (* Abstract state kept by an analysis *)
   type t
@@ -242,7 +243,15 @@ module UnseparatedPaths = struct
   (* Path matrix, separator set *)
   type t = int RVMap.t RVMap.t * RVSet.t
 
-  let init = (RVMap.empty, RVSet.empty)
+  let init rep =
+    let must, may = Rep.fold rep in
+    let vs = RVSet.union must may in
+    let p =
+      RVSet.fold
+        (fun v acc -> RVMap.add v (RVMap.singleton v 0) acc)
+        vs RVMap.empty
+    in
+    (p, RVSet.empty)
 
   let assume ((_, may), ((p, sep) : t)) v : t =
     let update (v_p : int) (h : int RVMap.t) =
@@ -269,33 +278,44 @@ module UnseparatedPaths = struct
 
   let subst (must_mapper, may_mapper) (f_p, f_sep) (a_p, a_sep) =
     let f_sep = flat_map must_mapper f_sep in
-    let add_max p src dst l =
-      RVMap.update dst
-        (function
-          | None -> Some (RVMap.singleton src l)
-          | Some p ->
-              Some
-                (RVMap.update src
-                   (function None -> Some l | Some l' -> Some (max l l'))
-                   p))
-        p
+    let add_max src dst l =
+      RVMap.update dst (function
+        | None -> Some (RVMap.singleton src l)
+        | Some p ->
+            Some
+              (RVMap.update src
+                 (function None -> Some l | Some l' -> Some (max l l'))
+                 p))
     in
     let f_p =
       RVMap.fold
-        (fun dst p acc ->
+        (fun dst p ->
           let dsts = may_mapper dst in
           RVMap.fold
-            (fun src l acc ->
-              let srcs = may_mapper src in
+            (fun src l ->
               RVSet.fold
-                (fun src acc ->
-                  RVSet.fold (fun dst acc -> add_max acc src dst l) dsts acc)
-                srcs acc)
-            p acc)
+                (fun src' -> RVSet.fold (fun dst' -> add_max src' dst' l) dsts)
+                (may_mapper src))
+            p)
         f_p RVMap.empty
     in
-    let p = all_path_union f_p a_p in
     let sep = RVSet.union f_sep a_sep in
+    let p =
+      RVMap.fold
+        (fun dst p ->
+          if RVMap.mem dst a_p then RVMap.add dst p
+          else
+            RVMap.fold
+              (fun src l acc ->
+                let acc = add_max src dst l acc in
+                if src = dst || RVSet.mem src sep then acc
+                else
+                  RVMap.fold
+                    (fun v l' -> add_max v dst (l + l'))
+                    (RVMap.find src acc) acc)
+              p)
+        (all_path_union f_p a_p) RVMap.empty
+    in
     (p, sep)
 end
 
@@ -341,9 +361,10 @@ let unseparated_paths ops funcs n_iters p e =
               run (p, sep) new_state new_max (n_iters - 1)
           | _ -> failwith "step does not return output and new state"
         in
-        run UnseparatedPaths.init state_rep Int.min_int n_iters
+        run (UnseparatedPaths.init state_rep) state_rep Int.min_int n_iters
     | _ -> failwith "step and infer must specify state and input"
   in
   let rep = UP.placeholder p in
-  let v = eval UnseparatedPaths.init (get_ctx VarMap.empty p.patt rep) e.expr in
+  let ctx = get_ctx VarMap.empty p.patt rep in
+  let v = eval (UnseparatedPaths.init rep) ctx e.expr in
   (rep, v)
