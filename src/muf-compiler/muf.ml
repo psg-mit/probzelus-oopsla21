@@ -32,26 +32,56 @@ let parse parsing_fun lexing_fun source_name =
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
   let module SMap = Map.Make (String) in
-    List.fold_left
-      Muf.(
-        fun funcs d ->
-          match d.decl with
-          | Dfun ({ name = "main_step" }, p, e) -> let success =
-            try
-              ignore (Analysis.m_consumed p e);
-              true
-            with Analysis.Infer -> false
-          in
-          Format.printf "m-consumed: %B\n" success;
-          let success =
-            try
-              ignore (Analysis.unseparated_paths 10 p e);
-              true
-            with Analysis.Infer -> false
-          in
-          Format.printf "unseparated_paths: %B\n" success;
-          exit 0
-          | _ -> funcs)
-      SMap.empty p |> ignore
+  let ops =
+    [
+      "bernoulli";
+      "gaussian";
+      "beta";
+      "delta";
+      "infer_init";
+      "ite";
+      "plus";
+      "mult";
+      "eval";
+      "get";
+    ]
+  in
+  List.fold_left
+    Muf.(
+      fun (mcs, ups) d ->
+        match d.decl with
+        | Dfun ({ name = "main_step" }, p, e) ->
+            let success =
+              try
+                ignore (Analysis.m_consumed ops mcs p e);
+                true
+              with Analysis.Infer -> false
+            in
+            Format.printf "m-consumed: %B\n" success;
+            let success =
+              try
+                ignore (Analysis.unseparated_paths ops ups 10 p e);
+                true
+              with Analysis.Infer -> false
+            in
+            Format.printf "unseparated_paths: %B\n" success;
+            exit 0
+        | Dfun ({ name }, p, e) ->
+            let mc =
+              try Analysis.m_consumed ops mcs p e
+              with Analysis.Infer ->
+                Format.printf "m-consumed failed for %s\n" name;
+                exit 1
+            in
+            let up =
+              try Analysis.unseparated_paths ops ups 10 p e
+              with Analysis.Infer ->
+                Format.printf "unseparated_paths failed for %s\n" name;
+                exit 1
+            in
+            (SMap.add name mc mcs, SMap.add name up ups)
+        | _ -> (mcs, ups))
+    (SMap.empty, SMap.empty) p
+  |> ignore
 
 let () = try Arg.parse [] compile_file "" with Error -> exit 1
