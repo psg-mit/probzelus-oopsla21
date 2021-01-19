@@ -157,13 +157,13 @@ module Evaluator (A : Analysis) = struct
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
       | Evar { name } -> ((VarMap.find name ctx, RVSet.empty), state)
-      | Esample e ->
+      | Esample (_, e) ->
           let v = new_var () in
           let (rep, own), state = eval ctx state e.expr in
           let state = A.assume (Rep.get rep, state) v in
           let s = RVSet.singleton v in
           ((Rscalar (s, s), RVSet.add v own), state)
-      | Eobserve (e1, e2) ->
+      | Eobserve (_, e1, e2) ->
           let (rep, own1), state = eval ctx state e1.expr in
           let v = new_var () in
           let state = A.assume (Rep.get rep, state) v in

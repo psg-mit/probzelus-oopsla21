@@ -15,9 +15,10 @@
 %token <string> STRING
 %token <string> IDENT
 
+%token OPEN
 %token VAL LET IN FUN
 %token IF THEN ELSE
-%token SAMPLE OBSERVE INFER
+%token FACTOR SAMPLE OBSERVE INFER
 
 %token EQUAL ARROW
 %token LPAREN RPAREN
@@ -34,6 +35,8 @@ program:
     { p }
 
 decl:
+| OPEN m = IDENT
+    { { decl = Dopen m } }
 | VAL x = patt EQUAL e = expr
     { { decl = Ddecl (x, e) } }
 (* Function *)
@@ -66,10 +69,12 @@ simple_expr:
 | e1 = simple_expr LPAREN e2 = simple_expr COMMA el = separated_nonempty_list(COMMA, simple_expr) RPAREN
     { mk_expr (Eapp (e1, mk_expr (Etuple (e2 :: el)))) }
 (* Probabilitic expressions *)
-| SAMPLE LPAREN e = expr RPAREN
-    { mk_expr (Esample e) }
-| OBSERVE LPAREN e1 = expr COMMA e2 = expr RPAREN
-    { mk_expr (Eobserve(e1, e2)) }
+| FACTOR LPAREN prob = IDENT COMMA e = expr RPAREN
+    { mk_expr (Efactor (prob, e)) }
+| SAMPLE LPAREN prob = IDENT COMMA e = expr RPAREN
+    { mk_expr (Esample (prob, e)) }
+| OBSERVE LPAREN prob = IDENT COMMA LPAREN e1 = expr COMMA e2 = expr RPAREN RPAREN
+    { mk_expr (Eobserve(prob, e1, e2)) }
 | INFER LPAREN FUN p = patt ARROW e1 = expr COMMA e2 = expr RPAREN
     { mk_expr (Einfer ((p, e1), e2))}
 

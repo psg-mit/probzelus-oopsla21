@@ -13,6 +13,7 @@
           ("if", IF);
           ("then", THEN);
           ("else", ELSE);
+          ("factor", FACTOR);
           ("sample", SAMPLE);
           ("observe", OBSERVE);
           ("infer", INFER);

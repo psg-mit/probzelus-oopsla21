@@ -1,14 +1,14 @@
 val step =
-  fun ((first, xt, outlier_prob), yobs) ->
+  fun ((first, xt, outlier_prob), (prob, yobs)) ->
     let (xt, outlier_prob) =
       if first then
-        (sample (gaussian (0., 100.)), sample (beta (100., 1000.)))
-      else (sample (gaussian (xt, 1.)), outlier_prob) in
-    let is_outlier = sample (bernoulli (outlier_prob)) in
+        (sample (prob, gaussian (0., 100.)), sample (prob, beta (100., 1000.)))
+      else (sample (prob, gaussian (xt, 1.)), outlier_prob) in
+    let is_outlier = sample (prob, bernoulli (outlier_prob)) in
     let () =
       if is_outlier then
-        (observe (gaussian (0., 100.), yobs))
-      else (observe (gaussian (xt, 1.), yobs)) in
+        (observe (prob, (gaussian (0., 100.), yobs)))
+      else (observe (prob, (gaussian (xt, 1.), yobs))) in
     (xt, (false, xt, outlier_prob))
 
 val main_init =
@@ -16,7 +16,7 @@ val main_init =
 val main_step =
   fun ((first, xt, outlier_prob), observed) ->
     infer (
-      fun ((first, xt, outlier_prob), yobs) ->
-        step ((first, xt, outlier_prob), yobs),
+      fun ((first, xt, outlier_prob), (prob, yobs)) ->
+        step ((first, xt, outlier_prob), (prob, yobs)),
       ((first, xt, outlier_prob), observed)
     )
