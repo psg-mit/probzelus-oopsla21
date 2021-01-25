@@ -156,7 +156,11 @@ module Evaluator (A : Analysis) = struct
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
-      | Evar { name } -> ((VarMap.find name ctx, RVSet.empty), state)
+      | Evar { name } ->
+          let v =
+            match VarMap.find_opt name ctx with Some v -> v | _ -> Rep.empty
+          in
+          ((v, RVSet.empty), state)
       | Esample (_, e) ->
           let v = new_var () in
           let (rep, own), state = eval ctx state e.expr in
@@ -182,6 +186,20 @@ module Evaluator (A : Analysis) = struct
       | Eapp (e1, e2) -> (
           let (arg, own'), state' = eval ctx state e2.expr in
           match e1.expr with
+          | Evar { name = "Array.init" } -> (
+              match e2.expr with
+              | Etuple [ _; f ] ->
+                  let (rep, own), state =
+                    eval ctx state'
+                      (Eapp (f, { expr = Econst (Cint 0); emeta = () }))
+                  in
+                  let _, may = Rep.fold rep in
+                  ((Rscalar (RVSet.empty, may), own), state)
+              | _ -> failwith "Array.init incorrect arguments")
+          | Evar { name = "Array.get" } -> (
+              match e2.expr with
+              | Etuple [ a; _ ] -> eval ctx state' a.expr
+              | _ -> failwith "Array.get incorrect arguments")
           | Evar { name } -> (
               if List.mem name ops then ((Rscalar (Rep.fold arg), own'), state')
               else

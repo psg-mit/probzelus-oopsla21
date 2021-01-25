@@ -26,7 +26,7 @@
 
 let newline = ('\010' | '\013' | "\013\010")
 let letter = ['A'-'Z' 'a'-'z']
-let identchar = ['A'-'Z' 'a'-'z' '_' '\'' '0'-'9']
+let identchar = ['A'-'Z' 'a'-'z' '_' '\'' '0'-'9' '.']
 
 let digit = ['0'-'9']
 let frac = '.' digit*
