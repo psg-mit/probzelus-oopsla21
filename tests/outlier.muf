@@ -14,9 +14,9 @@ val step =
 val main_init =
   infer_init (true, 0., 0.)
 val main_step =
-  fun ((first, xt, outlier_prob), observed) ->
+  fun ((first, xt, outlier_prob), (prob, yobs)) ->
     infer (
       fun ((first, xt, outlier_prob), (prob, yobs)) ->
         step ((first, xt, outlier_prob), (prob, yobs)),
-      ((first, xt, outlier_prob), observed)
+      ((first, xt, outlier_prob), (prob, yobs))
     )

@@ -7,9 +7,9 @@ val step =
 
 val main_init = infer_init (true, 0.)
 val main_step =
-  fun ((first, x), obs) ->
+  fun ((first, x), (prob, obs)) ->
     infer (
       fun ((first, x), (prob, obs)) ->
         step ((first, x), (prob, obs)),
-      ((false, x), obs)
+      ((false, x), (prob, obs))
     )

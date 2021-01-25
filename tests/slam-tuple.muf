@@ -9,9 +9,9 @@ val step =
 
 val main_init = infer_init (true, 0., 0.)
 val main_step =
-  fun ((first, x, (map1, map2)), (obs, cmd)) ->
+  fun ((first, x, (map1, map2)), (prob, (obs, cmd))) ->
     infer (
       fun ((first, x, (map1, map2)), (prob, (obs, cmd))) ->
         step ((first, x, (map1, map2)), (prob, (obs, cmd))),
-      ((first, x, (map1, map2)), (obs, cmd))
+      ((first, x, (map1, map2)), (prob, (obs, cmd)))
     )
