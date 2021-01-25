@@ -185,7 +185,6 @@ module Evaluator (A : Analysis) = struct
           let rep, own' = Rep.join (rep1, own1) (rep2, own2) in
           ((rep, RVSet.union own own'), A.join state1 state2)
       | Eapp (e1, e2) -> (
-          let (arg, own'), state' = eval ctx state e2.expr in
           let rec clear_must = function
             | Rep.Rscalar (_, may) -> Rep.Rscalar (RVSet.empty, may)
             | Rep.Rtuple rs -> Rep.Rtuple (List.map clear_must rs)
@@ -193,16 +192,18 @@ module Evaluator (A : Analysis) = struct
           let mk_expr e = { expr = e; emeta = () } in
           match e1.expr with
           | Evar { name = "Array.init" } | Evar { name = "List.init" } -> (
+              let _, state = eval ctx state e2.expr in
               match e2.expr with
               | Etuple [ _; f ] ->
                   let (rep, own), state =
-                    eval ctx state' (Eapp (f, mk_expr (Econst (Cint 0))))
+                    eval ctx state (Eapp (f, mk_expr (Econst (Cint 0))))
                   in
                   ((clear_must rep, own), state)
               | _ -> failwith "init incorrect arguments")
           | Evar { name = "Array.get" } -> (
+              let _, state = eval ctx state e2.expr in
               match e2.expr with
-              | Etuple [ a; _ ] -> eval ctx state' a.expr
+              | Etuple [ a; _ ] -> eval ctx state a.expr
               | _ -> failwith "Array.get incorrect arguments")
           | Evar { name = "List.append" } -> (
               match e2.expr with
@@ -255,11 +256,13 @@ module Evaluator (A : Analysis) = struct
                   in
                   (Rep.join (arg, own) r', state)
               | _ -> failwith "List.filter incorrect arguments")
-          | Evar { name = "List.length" } -> ((arg, own'), state')
+          | Evar { name = "List.length" } -> eval ctx state e2.expr
           | Evar { name = "eval" } ->
+              let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
-              ((arg, own'), state)
+              ((arg, own), state)
           | Evar { name } -> (
+              let (arg, own'), state' = eval ctx state e2.expr in
               if List.mem name ops then ((Rscalar (Rep.fold arg), own'), state')
               else
                 match VarMap.find_opt name funcs with
