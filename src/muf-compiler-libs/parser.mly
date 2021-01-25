@@ -59,6 +59,8 @@ simple_expr:
 (* Variable *)
 | x = IDENT
     { mk_expr (Evar { name = x }) }
+(* Unit *)
+| LPAREN RPAREN { mk_expr (Etuple []) }
 (* Tuple *)
 | LPAREN e1 = simple_expr COMMA el = separated_nonempty_list(COMMA, simple_expr) RPAREN
     { mk_expr (Etuple (e1 :: el)) }

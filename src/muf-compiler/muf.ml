@@ -41,9 +41,14 @@ let compile_file file =
       "infer_init";
       "ite";
       "plus";
+      "sub";
       "mult";
       "eval";
       "get";
+      "poisson";
+      "shuffle";
+      "not";
+      "lt";
     ]
   in
   List.fold_left
