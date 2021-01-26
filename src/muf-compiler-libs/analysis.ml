@@ -131,6 +131,7 @@ let rec get_ctx ctx p rep =
   | Ptuple (p :: ps), Rtuple (r :: rs) ->
       get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
   | Ptype (p, _), _ -> get_ctx ctx p.patt rep
+  | Pany, _ -> ctx
   | _, _ -> failwith "Representation and pattern mismatch"
 
 (* Raised when an inner infer fails *)
@@ -147,15 +148,15 @@ module Evaluator (A : Analysis) = struct
   let rec placeholder p =
     let open Rep in
     match p.patt with
-    | Pid _ ->
+    | Pid _ | Pany ->
         let i = new_var () in
         Rscalar (RVSet.singleton i, RVSet.singleton i)
     | Ptuple ps -> Rtuple (List.map placeholder ps)
-    | Pany -> Rep.empty
     | Ptype (_, t) -> placeholder_t t
 
   and placeholder_t = function
     | Ttuple ts -> Rtuple (List.map placeholder_t ts)
+    | T_constr ("array", [t]) | T_constr ("list", [t]) -> placeholder_t t
     | _ ->
         let i = new_var () in
         Rscalar (RVSet.singleton i, RVSet.singleton i)
@@ -163,7 +164,7 @@ module Evaluator (A : Analysis) = struct
   let eval (init : A.t) check_infer ops funcs ctx e =
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
       match e with
-      | Econst _ | Evar { name = "List.nil" } ->
+      | Econst _ | Evar { name = "List.nil" } | Evar { name = "Array.empty" } ->
           ((Rep.empty, RVSet.empty), state)
       | Evar { name } ->
           let v =
@@ -264,7 +265,7 @@ module Evaluator (A : Analysis) = struct
               match e2.expr with
               | Etuple [ prob; f; l ] ->
                   let (arg, own), state = eval ctx state l.expr in
-                  let r', state =
+                  let (_, own'), state =
                     eval (VarMap.add "arg" arg ctx) state
                       (Eif
                          ( mk_expr
@@ -277,7 +278,7 @@ module Evaluator (A : Analysis) = struct
                            mk_expr (Econst (Cbool true)),
                            mk_expr (Econst (Cbool false)) ))
                   in
-                  (Rep.join (clear_must arg, own) r', state)
+                  ((clear_must arg, RVSet.union own own'), state)
               | _ -> failwith "List.filter incorrect arguments")
           | Evar { name = "List.length" } -> eval ctx state e2.expr
           | Evar { name = "eval" } ->

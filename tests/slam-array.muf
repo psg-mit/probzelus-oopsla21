@@ -9,7 +9,7 @@ val step =
     let () = observe (prob, (bernoulli (ite (o, 0.9, 0.1)), obs)) in
     ((x, map), (false, x, map))
 
-val main_init = infer_init (true, 0., 0.)
+val main_init = infer_init (true, 0., Array.empty)
 val main_step =
   fun (state : (bool * float * float array), args : (_ * (int * float))) ->
     infer (
