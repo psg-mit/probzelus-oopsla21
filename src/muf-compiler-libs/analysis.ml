@@ -194,9 +194,13 @@ module Evaluator (A : Analysis) = struct
           | Evar { name = "Array.init" } | Evar { name = "List.init" } -> (
               let _, state = eval ctx state e2.expr in
               match e2.expr with
-              | Etuple [ _; f ] ->
+              | Etuple [ prob; _; f ] ->
                   let (rep, own), state =
-                    eval ctx state (Eapp (f, mk_expr (Econst (Cint 0))))
+                    eval ctx state
+                      (Eapp
+                         ( f,
+                           mk_expr (Etuple [ prob; mk_expr (Econst (Cint 0)) ])
+                         ))
                   in
                   ((clear_must rep, own), state)
               | _ -> failwith "init incorrect arguments")
@@ -214,17 +218,21 @@ module Evaluator (A : Analysis) = struct
               | _ -> failwith "List.append incorrect arguments")
           | Evar { name = "List.map" } -> (
               match e2.expr with
-              | Etuple [ f; l ] ->
+              | Etuple [ prob; f; l ] ->
                   let (arg, own'), state = eval ctx state l.expr in
                   let (rep, own), state =
                     eval (VarMap.add "arg" arg ctx) state
-                      (Eapp (f, mk_expr (Evar { name = "arg" })))
+                      (Eapp
+                         ( f,
+                           mk_expr
+                             (Etuple [ prob; mk_expr (Evar { name = "arg" }) ])
+                         ))
                   in
                   ((clear_must rep, RVSet.union own own'), state)
               | _ -> failwith "List.map incorrect arguments")
           | Evar { name = "List.iter2" } -> (
               match e2.expr with
-              | Etuple [ f; l1; l2 ] ->
+              | Etuple [ prob; f; l1; l2 ] ->
                   let (arg1, own1), state = eval ctx state l1.expr in
                   let (arg2, own2), state = eval ctx state l2.expr in
                   let (rep, own), state =
@@ -236,6 +244,7 @@ module Evaluator (A : Analysis) = struct
                            mk_expr
                              (Etuple
                                 [
+                                  prob;
                                   mk_expr (Evar { name = "arg1" });
                                   mk_expr (Evar { name = "arg2" });
                                 ]) ))
@@ -245,16 +254,22 @@ module Evaluator (A : Analysis) = struct
               | _ -> failwith "List.iter2 incorrect arguments")
           | Evar { name = "List.filter" } -> (
               match e2.expr with
-              | Etuple [ f; l ] ->
+              | Etuple [ prob; f; l ] ->
                   let (arg, own), state = eval ctx state l.expr in
                   let r', state =
                     eval (VarMap.add "arg" arg ctx) state
                       (Eif
-                         ( mk_expr (Eapp (f, mk_expr (Evar { name = "arg" }))),
+                         ( mk_expr
+                             (Eapp
+                                ( f,
+                                  mk_expr
+                                    (Etuple
+                                       [ prob; mk_expr (Evar { name = "arg" }) ])
+                                )),
                            mk_expr (Econst (Cbool true)),
                            mk_expr (Econst (Cbool false)) ))
                   in
-                  (Rep.join (arg, own) r', state)
+                  (Rep.join (clear_must arg, own) r', state)
               | _ -> failwith "List.filter incorrect arguments")
           | Evar { name = "List.length" } -> eval ctx state e2.expr
           | Evar { name = "eval" } ->

@@ -1,8 +1,8 @@
-val init = fun i -> sample (prob, bernoulli (0.5))
+val init = fun (prob, i) -> sample (prob, bernoulli (0.5))
 
 val step =
   fun ((first, x, map), (prob, (obs, cmd))) ->
-    let map = if first then Array.init (100, init) else map in
+    let map = if first then Array.init (prob, 100, init) else map in
     let wheel_slip = sample (prob, bernoulli (0.5)) in
     let x = if first then 0. else (if wheel_slip then x else plus (x, cmd)) in
     let o = Array.get (map, x) in
