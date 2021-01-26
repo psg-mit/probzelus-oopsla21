@@ -130,6 +130,7 @@ let rec get_ctx ctx p rep =
   | Ptuple [], Rtuple [] -> ctx
   | Ptuple (p :: ps), Rtuple (r :: rs) ->
       get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
+  | Ptype (p, _), _ -> get_ctx ctx p.patt rep
   | _, _ -> failwith "Representation and pattern mismatch"
 
 (* Raised when an inner infer fails *)
@@ -151,6 +152,13 @@ module Evaluator (A : Analysis) = struct
         Rscalar (RVSet.singleton i, RVSet.singleton i)
     | Ptuple ps -> Rtuple (List.map placeholder ps)
     | Pany -> Rep.empty
+    | Ptype (_, t) -> placeholder_t t
+
+  and placeholder_t = function
+    | Ttuple ts -> Rtuple (List.map placeholder_t ts)
+    | _ ->
+        let i = new_var () in
+        Rscalar (RVSet.singleton i, RVSet.singleton i)
 
   let eval (init : A.t) check_infer ops funcs ctx e =
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =

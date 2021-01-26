@@ -11,12 +11,11 @@ val step =
       else (observe (prob, (gaussian (xt, 1.), yobs))) in
     (xt, (false, xt, outlier_prob))
 
-val main_init =
-  infer_init (true, 0., 0.)
+val main_init = infer_init (true, 0., 0.)
 val main_step =
-  fun ((first, xt, outlier_prob), (prob, yobs)) ->
+  fun (state : (bool * float * float), args : (_ * float)) ->
     infer (
-      fun ((first, xt, outlier_prob), (prob, yobs)) ->
-        step ((first, xt, outlier_prob), (prob, yobs)),
-      ((first, xt, outlier_prob), (prob, yobs))
+      fun (state : (bool * float * float), args : (_ * float)) ->
+        step (state, args),
+      (state, args)
     )

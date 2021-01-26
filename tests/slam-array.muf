@@ -11,9 +11,9 @@ val step =
 
 val main_init = infer_init (true, 0., 0.)
 val main_step =
-  fun ((first, x, map), (prob, (obs, cmd))) ->
+  fun (state : (bool * float * float array), args : (_ * (int * float))) ->
     infer (
-      fun ((first, x, map), (prob, (obs, cmd))) ->
-        step ((first, x, map), (prob, (obs, cmd))),
-      ((first, x, map), (prob, (obs, cmd)))
+      fun (state : (bool * float * float array), args : (_ * (int * float))) ->
+        step (state, args),
+      (state, args)
     )

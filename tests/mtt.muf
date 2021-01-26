@@ -24,9 +24,9 @@ val step =
 
 val main_init = infer_init (true, List.nil)
 val main_step =
-  fun ((first, t), (prob, (inp, cmd))) ->
+  fun (state : (bool * float list), args : (_ * (float list * float))) ->
     infer (
-      fun ((first, t), (prob, (inp, cmd))) ->
-        step ((first, t), (prob, (inp, cmd))),
-      ((first, t), (prob, (inp, cmd)))
+      fun (state : (bool * float list), args : (_ * (float list * float))) ->
+        step (state, args),
+      (state, args)
     )

@@ -8,7 +8,7 @@
       List.iter (fun (key, data) -> Hashtbl.add tbl key data)
 	[ ("val", VAL);
           ("let", LET);
-	  ("in", IN);
+	      ("in", IN);
           ("fun", FUN);
           ("if", IF);
           ("then", THEN);
@@ -19,6 +19,13 @@
           ("infer", INFER);
           ("true", BOOL true);
           ("false", BOOL false);
+          ("bool", BOOLT);
+          ("int", INTT);
+          ("float", FLOATT);
+          ("dist", DIST);
+          ("unit", UNIT);
+          ("array", ARRAY);
+          ("list", LIST);
 	]; tbl
     end
 
@@ -40,6 +47,9 @@ rule token sbuff = parse
 | "(" { LPAREN }
 | ")" { RPAREN }
 | "," { COMMA }
+| ":" { COLON }
+| "*" { STAR }
+| "_" { UNDERSCORE }
 | [' ' '\t']
     { token sbuff lexbuf }
 | newline

@@ -19,12 +19,15 @@
 %token VAL LET IN FUN
 %token IF THEN ELSE
 %token FACTOR SAMPLE OBSERVE INFER
+%token BOOLT INTT FLOATT DIST UNIT ARRAY LIST
 
 %token EQUAL ARROW
 %token LPAREN RPAREN
 %token COMMA
 %token EOF
-
+%token COLON
+%token STAR
+%token UNDERSCORE
 
 %start <unit Muf.program> program
 
@@ -96,3 +99,16 @@ patt:
 | LPAREN p1 = patt COMMA pl = separated_nonempty_list(COMMA, patt) RPAREN
     { mk_patt (Ptuple (p1::pl)) }
 | LPAREN RPAREN { mk_patt (Ptuple []) }
+| x = IDENT COLON t = typ { mk_patt (Ptype (mk_patt (Pid { name = x }), t))}
+| UNDERSCORE { mk_patt Pany }
+
+typ:
+| INTT { Tany }
+| FLOATT { Tany }
+| BOOLT { Tany }
+| t = typ DIST { T_constr ("dist", [t]) }
+| UNIT { Ttuple [] }
+| LPAREN t = typ STAR tl = separated_nonempty_list(STAR, typ) RPAREN { Ttuple (t::tl) }
+| UNDERSCORE { Tany }
+| t = typ ARRAY { T_constr ("array", [t]) }
+| t = typ LIST { T_constr ("list", [t]) }
