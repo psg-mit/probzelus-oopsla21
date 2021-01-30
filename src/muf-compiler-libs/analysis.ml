@@ -156,7 +156,7 @@ module Evaluator (A : Analysis) = struct
 
   and placeholder_t = function
     | Ttuple ts -> Rtuple (List.map placeholder_t ts)
-    | T_constr ("array", [t]) | T_constr ("list", [t]) -> placeholder_t t
+    | T_constr ("array", [ t ]) | T_constr ("list", [ t ]) -> placeholder_t t
     | _ ->
         let i = new_var () in
         Rscalar (RVSet.singleton i, RVSet.singleton i)
@@ -416,7 +416,10 @@ module UnseparatedPaths = struct
                 else
                   RVMap.fold
                     (fun v l' -> add_max v dst (l + l'))
-                    (RVMap.find src acc) acc)
+                    (match RVMap.find_opt src acc with
+                    | Some v -> v
+                    | None -> RVMap.empty)
+                    acc)
               p)
         (all_path_union f_p a_p) RVMap.empty
     in
