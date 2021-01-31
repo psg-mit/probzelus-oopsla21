@@ -4,6 +4,7 @@ val main_step =
     infer (
       fun ((x_p, x_pp, x_ppp, x_pppp), (prob, obs)) ->
         let x = sample (prob, gaussian (x_p, 1.)) in
+        let _ = observe (prob, (x, 1.0)) in
         (x_pppp, (x, x_p, x_pp, x_ppp)),
       (state, args)
     )
