@@ -16,14 +16,14 @@
 %token <string> IDENT
 
 %token OPEN
-%token VAL LET IN FUN
+%token VAL LET IN FUN STREAM
 %token IF THEN ELSE
 %token FACTOR SAMPLE OBSERVE INFER
 %token BOOLT INTT FLOATT DIST UNIT ARRAY LIST
 
 %token EQUAL ARROW
-%token LPAREN RPAREN
-%token COMMA
+%token LPAREN RPAREN LCURLY RCURLY
+%token COMMA SEMI
 %token EOF
 %token COLON
 %token STAR
@@ -45,6 +45,16 @@ decl:
 (* Function *)
 | VAL x = patt EQUAL FUN p = patt ARROW e = expr
     { match x.patt with Pid i -> { decl = Dfun (i, p, e) } | _ -> failwith "Function pattern" }
+| VAL x = patt EQUAL STREAM LCURLY init = IDENT EQUAL e_init = expr SEMI step = IDENT p = patt EQUAL e_step = expr RCURLY
+    { begin match init with "init" -> () | _ -> failwith "init expexted" end;
+      begin match step with "step" -> () | _ -> failwith "step expexted" end;
+      let x = match x.patt with Pid i -> i | _ -> failwith "name expexted" in
+      let n =
+        { n_type = ([], TKrecord []); (* XXX TODO XXX *)
+          n_init = e_init;
+          n_step = (p, e_step); }
+      in
+      { decl = Dnode (x, [], n) } }
 
 simple_expr:
 (* Parenthesized expression *)
@@ -74,14 +84,16 @@ simple_expr:
 | e1 = simple_expr LPAREN e2 = simple_expr COMMA el = separated_nonempty_list(COMMA, simple_expr) RPAREN
     { mk_expr (Eapp (e1, mk_expr (Etuple (e2 :: el)))) }
 (* Probabilitic expressions *)
-| FACTOR LPAREN prob = IDENT COMMA e = expr RPAREN
-    { mk_expr (Efactor (prob, e)) }
-| SAMPLE LPAREN prob = IDENT COMMA e = expr RPAREN
-    { mk_expr (Esample (prob, e)) }
-| OBSERVE LPAREN prob = IDENT COMMA LPAREN e1 = expr COMMA e2 = expr RPAREN RPAREN
-    { mk_expr (Eobserve(prob, e1, e2)) }
-| INFER LPAREN FUN p = patt ARROW e1 = expr COMMA e2 = expr RPAREN
-    { mk_expr (Einfer ((p, e1), e2))}
+| FACTOR LPAREN e = expr RPAREN
+    { mk_expr (Efactor ("prob", e)) }
+| SAMPLE LPAREN e = expr RPAREN
+    { mk_expr (Esample ("prob", e)) }
+| OBSERVE e = expr
+    { match e.expr with
+      | Etuple [e1; e2] -> mk_expr (Eobserve("prob", e1, e2))
+      | _ -> failwith "tuple expected as argument of observe" }
+| INFER e = simple_expr m = IDENT
+    { mk_expr (Einfer (e, { name = m })) }
 
 expr:
 | e = simple_expr
