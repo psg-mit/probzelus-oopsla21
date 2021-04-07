@@ -6,7 +6,7 @@
     let tbl = Hashtbl.create 37 in
     begin
       List.iter (fun (key, data) -> Hashtbl.add tbl key data)
-	[ ("val", VAL);
+	[     ("val", VAL);
           ("let", LET);
 	      ("in", IN);
           ("stream", STREAM);
@@ -27,6 +27,8 @@
           ("unit", UNIT);
           ("array", ARRAY);
           ("list", LIST);
+          ("unfold", UNFOLD);
+          ("reset", RESET);
 	]; tbl
     end
 

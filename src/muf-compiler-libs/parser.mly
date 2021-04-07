@@ -18,7 +18,7 @@
 %token OPEN
 %token VAL LET IN FUN STREAM
 %token IF THEN ELSE
-%token FACTOR SAMPLE OBSERVE INFER
+%token FACTOR SAMPLE OBSERVE INFER INIT UNFOLD RESET
 %token BOOLT INTT FLOATT DIST UNIT ARRAY LIST
 
 %token EQUAL ARROW
@@ -88,12 +88,17 @@ simple_expr:
     { mk_expr (Efactor ("prob", e)) }
 | SAMPLE LPAREN e = expr RPAREN
     { mk_expr (Esample ("prob", e)) }
-| OBSERVE e = expr
-    { match e.expr with
-      | Etuple [e1; e2] -> mk_expr (Eobserve("prob", e1, e2))
-      | _ -> failwith "tuple expected as argument of observe" }
-| INFER e = simple_expr m = IDENT
+| OBSERVE LPAREN e1 = simple_expr COMMA e2 = simple_expr RPAREN
+    { mk_expr (Eobserve ("prob", e1, e2)) }
+| INFER LPAREN e = simple_expr COMMA m = IDENT RPAREN
     { mk_expr (Einfer (e, { name = m })) }
+(* Streams *)
+| INIT LPAREN m = IDENT RPAREN
+    { mk_expr (Ecall_init (mk_expr (Evar { name = m }))) }
+| UNFOLD LPAREN e1 = simple_expr COMMA e2 = simple_expr RPAREN
+    { mk_expr (Ecall_step (e1, e2)) }
+| RESET LPAREN e = simple_expr RPAREN
+    { mk_expr (Ecall_reset e) }
 
 expr:
 | e = simple_expr
