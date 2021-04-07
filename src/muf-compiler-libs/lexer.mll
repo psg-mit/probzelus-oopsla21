@@ -9,6 +9,7 @@
 	[ ("val", VAL);
           ("let", LET);
 	      ("in", IN);
+          ("stream", STREAM);
           ("fun", FUN);
           ("if", IF);
           ("then", THEN);
@@ -46,7 +47,10 @@ rule token sbuff = parse
 | "->" { ARROW }
 | "(" { LPAREN }
 | ")" { RPAREN }
+| "{" { LCURLY }
+| "}" { RCURLY }
 | "," { COMMA }
+| ";" { SEMI }
 | ":" { COLON }
 | "*" { STAR }
 | "_" { UNDERSCORE }

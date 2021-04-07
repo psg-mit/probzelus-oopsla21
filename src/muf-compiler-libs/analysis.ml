@@ -161,7 +161,7 @@ module Evaluator (A : Analysis) = struct
         let i = new_var () in
         Rscalar (RVSet.singleton i, RVSet.singleton i)
 
-  let eval (init : A.t) check_infer ops funcs ctx e =
+  let eval (init : A.t) _check_infer ops funcs ctx e =
     let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
       match e with
       | Econst _ | Evar { name = "List.nil" } | Evar { name = "Array.empty" } ->
@@ -314,9 +314,12 @@ module Evaluator (A : Analysis) = struct
       | Erecord _ -> failwith "Record not implemented"
       | Efield _ -> failwith "Record access not implemented"
       | Esequence _ -> failwith "Sequence not implemented"
-      | Einfer ((p, e), e') ->
-          let (rep, own), state = eval ctx state e'.expr in
-          if check_infer p e then ((rep, own), state) else raise Infer
+      | Einfer (_, _) ->
+          assert false (* XXX TODO XXX *)
+          (* let (rep, own), state = eval ctx state e'.expr in *)
+          (* if check_infer p e then ((rep, own), state) else raise Infer *)
+      | Ecall_init _ | Ecall_step (_, _) | Ecall_reset _ ->
+          assert false (* XXX TODO XXX *)
     in
     eval ctx init e
 end
