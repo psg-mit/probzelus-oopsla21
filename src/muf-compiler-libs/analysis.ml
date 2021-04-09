@@ -9,11 +9,29 @@ module Rep = struct
   (* Lower bound of used RVs, upper bound of used RVs *)
   type scalar = RVSet.t * RVSet.t
 
+  (* Streams track their current state, syntax, and contexts *)
+  type ('p, 'e) stream = {
+    t_state : ('p, 'e) rep;
+    p_state : 'p;
+    p_in : 'p;
+    e : 'e;
+    fctx : ('p, 'e) fn VarMap.t;
+    mctx : ('p, 'e) stream VarMap.t;
+  }
+
+  (* Functions track their syntax and contexts *)
+  and ('p, 'e) fn =
+    | Fn of 'p * 'e * ('p, 'e) fn VarMap.t * ('p, 'e) stream VarMap.t
+
   (* The abstract representation of a uF term has the same rep as its type *)
-  type rep = Rscalar of scalar | Rtuple of rep list
+  and ('p, 'e) rep =
+    | Rscalar of scalar
+    | Rtuple of ('p, 'e) rep list
+    | Rstream of ('p, 'e) stream
+    | Rbounded
 
   (* It also contains the set of RVs this term owns, independently of its substructure *)
-  type t = rep * RVSet.t
+  type ('p, 'e) t = ('p, 'e) rep * RVSet.t
 
   let empty = Rscalar (RVSet.empty, RVSet.empty)
 
@@ -38,14 +56,14 @@ module Rep = struct
                 failwith "Cannot join tuple representations of different length"
           in
           Rtuple (join' rs1 rs2)
-      | _ -> failwith "Cannot join scalar and tuple representations"
+      | _ -> failwith "Cannot join incompatible representations"
     in
     (r, RVSet.union own1 own2)
 
   (* Given a scalar representation, extract its components *)
   let get = function
     | Rscalar (must, may) -> (must, may)
-    | _ -> failwith "Unexpected tuple representation"
+    | _ -> failwith "Unexpected non-scalar representation"
 
   (* Given a representation, merge it into a scalar and extract its components *)
   let rec fold = function
@@ -56,23 +74,10 @@ module Rep = struct
             let must', may' = fold r in
             (RVSet.union must must', RVSet.union may may'))
           (RVSet.empty, RVSet.empty) rs
+    | _ -> failwith "Cannot fold representation"
 end
 
-module Type = struct
-  (* General muF types, including functions and streams. *)
-  (* TODO: don't do this. Just add a context for m's. *)
-  type ('p, 'e) t =
-    | Trep of Rep.t
-    | Tfun of 'p * 'e
-    | Tstream of {
-        t_state : ('p, 'e) t;
-        p_state : 'p;
-        p_in : 'p;
-        ctx : ('p, 'e) t VarMap.t;
-        e : 'e;
-      }
-    | Tbounded
-end
+let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
 module type Analysis = sig
   (* Abstract state kept by an analysis *)
@@ -113,12 +118,19 @@ module Evaluator (A : Analysis) = struct
       i := i';
       i'
 
-  let eval (init : A.t) _check_infer ops funcs ctx e =
-    let rec eval (ctx : Rep.rep VarMap.t) (state : A.t) e : Rep.t * A.t =
+  let rec default p =
+    match p.patt with
+    | Pany | Pid _ -> Rep.empty
+    | Ptuple ps -> Rep.Rtuple (List.map default ps)
+    | Ptype (p, _) -> default p
+
+  let eval (init : A.t) check_infer ops ctx e =
+    let rec eval ctx (state : A.t) e : ('p, 'e) Rep.t * A.t =
       match e with
       | Econst _ | Evar { name = "List.nil" } | Evar { name = "Array.empty" } ->
           ((Rep.empty, RVSet.empty), state)
       | Evar { name } ->
+          let _, _, ctx = ctx in
           let v =
             match VarMap.find_opt name ctx with Some v -> v | _ -> Rep.empty
           in
@@ -149,6 +161,7 @@ module Evaluator (A : Analysis) = struct
           let rec clear_must = function
             | Rep.Rscalar (_, may) -> Rep.Rscalar (RVSet.empty, may)
             | Rep.Rtuple rs -> Rep.Rtuple (List.map clear_must rs)
+            | r -> r
           in
           let mk_expr e = { expr = e; emeta = () } in
           match e1.expr with
@@ -181,8 +194,11 @@ module Evaluator (A : Analysis) = struct
               match e2.expr with
               | Etuple [ prob; f; l ] ->
                   let (arg, own'), state = eval ctx state l.expr in
+                  let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
-                    eval (VarMap.add "arg" arg ctx) state
+                    eval
+                      (fctx, mctx, VarMap.add "arg" arg ctx)
+                      state
                       (Eapp
                          ( f,
                            mk_expr
@@ -196,9 +212,12 @@ module Evaluator (A : Analysis) = struct
               | Etuple [ prob; f; l1; l2 ] ->
                   let (arg1, own1), state = eval ctx state l1.expr in
                   let (arg2, own2), state = eval ctx state l2.expr in
+                  let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
                     eval
-                      (VarMap.add "arg1" arg1 (VarMap.add "arg2" arg2 ctx))
+                      ( fctx,
+                        mctx,
+                        VarMap.add "arg1" arg1 (VarMap.add "arg2" arg2 ctx) )
                       state
                       (Eapp
                          ( f,
@@ -217,8 +236,11 @@ module Evaluator (A : Analysis) = struct
               match e2.expr with
               | Etuple [ prob; f; l ] ->
                   let (arg, own), state = eval ctx state l.expr in
+                  let fctx, mctx, ctx = ctx in
                   let (_, own'), state =
-                    eval (VarMap.add "arg" arg ctx) state
+                    eval
+                      (fctx, mctx, VarMap.add "arg" arg ctx)
+                      state
                       (Eif
                          ( mk_expr
                              (Eapp
@@ -241,13 +263,20 @@ module Evaluator (A : Analysis) = struct
               let (arg, own'), state' = eval ctx state e2.expr in
               if List.mem name ops then ((Rscalar (Rep.fold arg), own'), state')
               else
-                match VarMap.find_opt name funcs with
-                | Some _ -> failwith "Unimplemented"
-                | _ -> failwith ("Illegal operator " ^ name))
+                let fctx, _, _ = ctx in
+                match VarMap.find_opt name fctx with
+                | Some (Rep.Fn (p, e, fctx, mctx)) ->
+                    eval
+                      (fctx, mctx, get_ctx VarMap.empty p.patt arg)
+                      state e.expr
+                | None -> failwith ("Illegal operator " ^ name))
           | _ -> failwith "Illegal operator")
       | Elet (p, e, e') ->
           let (rep, own'), state = eval ctx state e.expr in
-          let (rep, own), state = eval (get_ctx ctx p.patt rep) state e'.expr in
+          let fctx, mctx, ctx = ctx in
+          let (rep, own), state =
+            eval (fctx, mctx, get_ctx ctx p.patt rep) state e'.expr
+          in
           ((rep, RVSet.union own' own), state)
       | Etuple es ->
           let (rep, own), state =
@@ -262,13 +291,59 @@ module Evaluator (A : Analysis) = struct
       | Erecord _ -> failwith "Record not implemented"
       | Efield _ -> failwith "Record access not implemented"
       | Esequence _ -> failwith "Sequence not implemented"
-      | Einfer (_, _) ->
-          assert false
-          (* XXX TODO XXX *)
-          (* let (rep, own), state = eval ctx state e'.expr in *)
-          (* if check_infer p e then ((rep, own), state) else raise Infer *)
-      | Ecall_init _ | Ecall_step (_, _) | Ecall_reset _ -> assert false
-      (* XXX TODO XXX *)
+      | Einfer (_, { name }) -> (
+          let _, mctx, _ = ctx in
+          match VarMap.find_opt name mctx with
+          | None -> failwith ("Illegal stream " ^ name)
+          | Some m ->
+              if check_infer m then ((Rep.empty, RVSet.empty), state)
+              else raise Infer)
+      | Ecall_init e -> (
+          match e.expr with
+          | Evar { name } -> (
+              let _, mctx, _ = ctx in
+              match VarMap.find_opt name mctx with
+              | None -> failwith ("Illegal stream " ^ name)
+              | Some m -> ((Rep.Rstream m, RVSet.empty), state))
+          | _ -> failwith "Can only init stream definitions")
+      | Ecall_reset e ->
+          let (rep, own), state = eval ctx state e.expr in
+          let rep =
+            match rep with
+            | Rep.Rstream m ->
+                Rep.Rstream { m with t_state = default m.p_state }
+            | Rep.Rbounded -> Rep.Rbounded
+            | _ -> failwith "Expected stream"
+          in
+          ((rep, own), state)
+      | Ecall_step (s, e) -> (
+          let (rep, own), state = eval ctx state s.expr in
+          let (arg, own'), state = eval ctx state e.expr in
+          let own = RVSet.union own own' in
+          match rep with
+          | Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx } ->
+              let (out, own'), state =
+                eval
+                  ( fctx,
+                    mctx,
+                    get_ctx
+                      (get_ctx VarMap.empty p_state.patt t_state)
+                      p_in.patt arg )
+                  state e.expr
+              in
+              let out =
+                match out with
+                | Rep.Rtuple [ t_out; t_state ] ->
+                    Rep.Rtuple
+                      [
+                        t_out;
+                        Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx };
+                      ]
+                | _ -> failwith "Illegal stream step output"
+              in
+              ((out, RVSet.union own own'), state)
+          | Rep.Rbounded -> ((Rep.empty, own), state)
+          | _ -> failwith "Cannot unfold non-stream")
     in
     eval ctx init e
 end
@@ -328,21 +403,41 @@ module UnseparatedPaths = struct
   let join (p1, sep1) (p2, sep2) = (all_path_union p1 p2, RVSet.inter sep1 sep2)
 end
 
-let m_consumed ops funcs p e =
+let ops =
+  [
+    "bernoulli";
+    "gaussian";
+    "beta";
+    "delta";
+    "infer_init";
+    "ite";
+    "plus";
+    "sub";
+    "mult";
+    "eval";
+    "get";
+    "poisson";
+    "shuffle";
+    "not";
+    "lt";
+  ]
+
+let m_consumed ops fctx mctx _p_state _p_init e =
   let module C = Evaluator (Consumed) in
-  let rec eval ctx e = C.eval Consumed.init check_infer ops funcs ctx e
-  and check_infer p e =
-    let (rep, _), (add, rem) = eval' e p Rep.empty in
+  let rec eval ctx e = C.eval Consumed.init check_infer ops (fctx, mctx, ctx) e
+  and check_infer _m =
+    let (rep, _), (add, rem) = eval' e _p_init Rep.empty in
     let _, may = Rep.fold rep in
     RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
   and eval' e p rep = eval (get_ctx VarMap.empty p.patt rep) e.expr in
   let rep = Rep.empty in
-  (rep, eval' e p rep)
+  (rep, eval' e _p_init rep)
 
-let unseparated_paths ops funcs n_iters p e =
+let unseparated_paths ops mctx fctx n_iters p e =
   let module UP = Evaluator (UnseparatedPaths) in
-  let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ops funcs ctx e
-  and check_infer p e =
+  let rec eval (p, sep) ctx e =
+    UP.eval (p, sep) check_infer ops (fctx, mctx, ctx) e
+  and check_infer _m =
     match (p.patt, Rep.empty) with
     | Ptuple [ state_p; obs_p ], Rtuple [ state_rep; obs_rep ] ->
         let obs_ctx = get_ctx VarMap.empty obs_p.patt obs_rep in
@@ -377,3 +472,5 @@ let unseparated_paths ops funcs n_iters p e =
   let ctx = get_ctx VarMap.empty p.patt rep in
   let v = eval (UnseparatedPaths.init rep) ctx e.expr in
   (rep, v)
+
+let process_node _p_state _p_in _e _fctx _mctx = failwith "Unimplemented"
