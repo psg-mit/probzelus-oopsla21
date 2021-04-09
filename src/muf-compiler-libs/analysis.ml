@@ -11,6 +11,7 @@ module Rep = struct
 
   (* Streams track their current state, syntax, and contexts *)
   type ('p, 'e) stream = {
+    t_init : ('p, 'e) rep;
     t_state : ('p, 'e) rep;
     p_state : 'p;
     p_in : 'p;
@@ -296,8 +297,8 @@ module Evaluator (A : Analysis) = struct
           match VarMap.find_opt name mctx with
           | None -> failwith ("Illegal stream " ^ name)
           | Some m ->
-              if check_infer m.p_state m.p_in m.e m.fctx m.mctx then
-                ((Rep.empty, RVSet.empty), state)
+              if check_infer m.t_init m.p_state m.p_in m.e m.fctx m.mctx then
+                ((Rbounded, RVSet.empty), state)
               else raise Infer)
       | Ecall_init e -> (
           match e.expr with
@@ -322,7 +323,7 @@ module Evaluator (A : Analysis) = struct
           let (arg, own'), state = eval ctx state e.expr in
           let own = RVSet.union own own' in
           match rep with
-          | Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx } ->
+          | Rep.Rstream { t_init; t_state; p_state; p_in; e; fctx; mctx } ->
               let (out, own'), state =
                 eval
                   ( fctx,
@@ -338,7 +339,8 @@ module Evaluator (A : Analysis) = struct
                     Rep.Rtuple
                       [
                         t_out;
-                        Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx };
+                        Rep.Rstream
+                          { t_init; t_state; p_state; p_in; e; fctx; mctx };
                       ]
                 | _ -> failwith "Illegal stream step output"
               in
@@ -347,6 +349,20 @@ module Evaluator (A : Analysis) = struct
           | _ -> failwith "Cannot unfold non-stream")
     in
     eval ctx init e
+end
+
+module Empty = struct
+  type t = unit
+
+  let init = ()
+
+  let assume _ _ = ()
+
+  let observe _ _ = ()
+
+  let value _ = ()
+
+  let join _ _ = ()
 end
 
 module Consumed = struct
@@ -423,28 +439,25 @@ let ops =
     "lt";
   ]
 
-let initial_ctx p_state p_in =
-  get_ctx
-    (get_ctx VarMap.empty p_state.patt (default p_state))
-    p_in.patt (default p_in)
+let initial_ctx t_init p_state p_in =
+  get_ctx (get_ctx VarMap.empty p_state.patt t_init) p_in.patt (default p_in)
 
-let m_consumed p_state p_in e fctx mctx =
+let m_consumed t_init p_state p_in e fctx mctx =
   let module C = Evaluator (Consumed) in
   let rec eval ctx e = C.eval Consumed.init check_infer ops ctx e
-  and check_infer p_state p_in e fctx mctx =
+  and check_infer t_init p_state p_in e fctx mctx =
     let (rep, _), (add, rem) =
-      eval (fctx, mctx, initial_ctx p_state p_in) e.expr
+      eval (fctx, mctx, initial_ctx t_init p_state p_in) e.expr
     in
     let _, may = Rep.fold rep in
     RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
   in
-  eval (fctx, mctx, initial_ctx p_state p_in) e
+  eval (fctx, mctx, initial_ctx t_init p_state p_in) e
 
-let unseparated_paths n_iters p_state p_in e fctx mctx =
+let unseparated_paths n_iters t_init p_state p_in e fctx mctx =
   let module UP = Evaluator (UnseparatedPaths) in
   let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ops ctx e
-  and check_infer p_state p_in e fctx mctx =
-    let state_rep = default p_state in
+  and check_infer t_init p_state p_in e fctx mctx =
     let in_ctx = get_ctx VarMap.empty p_in.patt (default p_in) in
     let rec run (p, sep) prev_state prev_max n_iters =
       n_iters > 0
@@ -471,21 +484,25 @@ let unseparated_paths n_iters p_state p_in e fctx mctx =
       | Rtuple [ _; new_state ] -> run (p, sep) new_state new_max (n_iters - 1)
       | _ -> failwith "step does not return output and new state"
     in
-    run (UnseparatedPaths.init state_rep) state_rep Int.min_int n_iters
+    run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters
   in
   eval
     (UnseparatedPaths.init Rep.empty)
-    (fctx, mctx, initial_ctx p_state p_in)
+    (fctx, mctx, initial_ctx t_init p_state p_in)
     e
 
-let process_node p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
+let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
     (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
+  let module E = Evaluator (Empty) in
+  let (t_init, _), _ =
+    E.eval () (fun _ _ _ _ _ _ -> true) ops (fctx, mctx, VarMap.empty) e_init.expr
+  in
   let _ =
-    try ignore (m_consumed p_state p_in e.expr fctx mctx)
+    try ignore (m_consumed t_init p_state p_in e.expr fctx mctx)
     with Infer -> Printf.printf "m-consumed analysis failed\n"
   in
   let _ =
-    try ignore (unseparated_paths 10 p_state p_in e.expr fctx mctx)
+    try ignore (unseparated_paths 10 t_init p_state p_in e.expr fctx mctx)
     with Infer -> Printf.printf "Unseparated paths analysis failed\n"
   in
-  { t_state = default p_state; p_state; p_in; e; fctx; mctx }
+  { t_init; t_state = t_init; p_state; p_in; e; fctx; mctx }

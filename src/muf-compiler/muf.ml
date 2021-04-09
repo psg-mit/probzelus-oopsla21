@@ -31,7 +31,6 @@ let parse parsing_fun lexing_fun source_name =
 
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
-  let _ = Printf.printf "Parse successful" in
   let module SMap = Map.Make (String) in
   let open Muf in
   List.fold_left
@@ -44,7 +43,7 @@ let compile_file file =
           match p.patt with
           | Ptuple [ p_state; p_in ] ->
               ( fctx,
-                SMap.add name (Analysis.process_node p_state p_in e fctx mctx) mctx
+                SMap.add name (Analysis.process_node node.n_init p_state p_in e fctx mctx) mctx
               )
           | _ -> failwith "Stream definition lacking step (state, input).")
       | _ -> (fctx, mctx))
