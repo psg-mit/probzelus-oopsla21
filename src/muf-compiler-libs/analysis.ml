@@ -75,7 +75,7 @@ module Rep = struct
             let must', may' = fold r in
             (RVSet.union must must', RVSet.union may may'))
           (RVSet.empty, RVSet.empty) rs
-    | _ -> failwith "Cannot fold representation"
+    | Rstream _ | Rbounded -> (RVSet.empty, RVSet.empty)
 end
 
 let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)

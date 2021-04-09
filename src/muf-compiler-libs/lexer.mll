@@ -27,6 +27,7 @@
           ("unit", UNIT);
           ("array", ARRAY);
           ("list", LIST);
+          ("init", INIT);
           ("unfold", UNFOLD);
           ("reset", RESET);
 	]; tbl

@@ -45,9 +45,8 @@ decl:
 (* Function *)
 | VAL x = patt EQUAL FUN p = patt ARROW e = expr
     { match x.patt with Pid i -> { decl = Dfun (i, p, e) } | _ -> failwith "Function pattern" }
-| VAL x = patt EQUAL STREAM LCURLY init = IDENT EQUAL e_init = expr SEMI step = IDENT p = patt EQUAL e_step = expr RCURLY
-    { begin match init with "init" -> () | _ -> failwith "init expected" end;
-      begin match step with "step" -> () | _ -> failwith "step expected" end;
+| VAL x = patt EQUAL STREAM LCURLY INIT EQUAL e_init = expr SEMI step = IDENT p = patt EQUAL e_step = expr RCURLY
+    { begin match step with "step" -> () | _ -> failwith "step expected" end;
       let x = match x.patt with Pid i -> i | _ -> failwith "name expected" in
       let n =
         { n_type = ([], TKrecord []); (* XXX TODO XXX *)
