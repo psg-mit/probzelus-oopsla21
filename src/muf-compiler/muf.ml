@@ -31,6 +31,7 @@ let parse parsing_fun lexing_fun source_name =
 
 let compile_file file =
   let p = parse Parser.program (Lexer.token ()) file in
+  let _ = Printf.printf "Parse successful" in
   let module SMap = Map.Make (String) in
   let ops =
     [

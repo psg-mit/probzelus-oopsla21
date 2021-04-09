@@ -60,6 +60,7 @@ end
 
 module Type = struct
   (* General muF types, including functions and streams. *)
+  (* TODO: don't do this. Just add a context for m's. *)
   type ('p, 'e) t =
     | Trep of Rep.t
     | Tfun of 'p * 'e

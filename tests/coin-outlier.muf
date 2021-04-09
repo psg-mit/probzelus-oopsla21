@@ -1,16 +1,14 @@
-val step =
-  fun ((first, x), (prob, obs)) ->
-    let p = if first then sample (prob, beta (1., 1.)) else p in
-    let outlier = sample (prob, bernoulli (0.5)) in
+val coin = stream {
+  init = (true, 0.);
+  step ((first, x), obs) =
+    let p = if first then sample (beta (1., 1.)) else p in
+    let outlier = sample (bernoulli (0.5)) in
     let x = if outlier then bernoulli (0.5) else bernoulli (p) in
-    let () = observe (prob, (x, obs)) in
+    let () = observe (x, obs) in
     (x, (false, x))
+}
 
-val main_init = infer_init (true, 0.)
-val main_step =
-  fun (state : (bool * float), args : (_ * float)) ->
-    infer (
-      fun (state : (bool * float), args : (_ * float)) ->
-        step (state, args),
-      (state, args)
-    )
+val main = stream {
+  init = infer (1, coin);
+  step (coin, obs) = unfold (coin, obs)
+}
