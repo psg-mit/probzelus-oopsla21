@@ -107,6 +107,12 @@ let rec get_ctx ctx p rep =
   | Pany, _ -> ctx
   | _, _ -> failwith "Representation and pattern mismatch"
 
+let rec default p =
+  match p.patt with
+  | Pany | Pid _ -> Rep.empty
+  | Ptuple ps -> Rep.Rtuple (List.map default ps)
+  | Ptype (p, _) -> default p
+
 (* Raised when an inner infer fails *)
 exception Infer
 
@@ -117,12 +123,6 @@ module Evaluator (A : Analysis) = struct
       let i' = !i + 1 in
       i := i';
       i'
-
-  let rec default p =
-    match p.patt with
-    | Pany | Pid _ -> Rep.empty
-    | Ptuple ps -> Rep.Rtuple (List.map default ps)
-    | Ptype (p, _) -> default p
 
   let eval (init : A.t) check_infer ops ctx e =
     let rec eval ctx (state : A.t) e : ('p, 'e) Rep.t * A.t =
@@ -296,7 +296,8 @@ module Evaluator (A : Analysis) = struct
           match VarMap.find_opt name mctx with
           | None -> failwith ("Illegal stream " ^ name)
           | Some m ->
-              if check_infer m then ((Rep.empty, RVSet.empty), state)
+              if check_infer m.p_state m.p_in m.e m.fctx m.mctx then
+                ((Rep.empty, RVSet.empty), state)
               else raise Infer)
       | Ecall_init e -> (
           match e.expr with
@@ -422,55 +423,69 @@ let ops =
     "lt";
   ]
 
-let m_consumed ops fctx mctx _p_state _p_init e =
+let initial_ctx p_state p_in =
+  get_ctx
+    (get_ctx VarMap.empty p_state.patt (default p_state))
+    p_in.patt (default p_in)
+
+let m_consumed p_state p_in e fctx mctx =
   let module C = Evaluator (Consumed) in
-  let rec eval ctx e = C.eval Consumed.init check_infer ops (fctx, mctx, ctx) e
-  and check_infer _m =
-    let (rep, _), (add, rem) = eval' e _p_init Rep.empty in
+  let rec eval ctx e = C.eval Consumed.init check_infer ops ctx e
+  and check_infer p_state p_in e fctx mctx =
+    let (rep, _), (add, rem) =
+      eval (fctx, mctx, initial_ctx p_state p_in) e.expr
+    in
     let _, may = Rep.fold rep in
     RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
-  and eval' e p rep = eval (get_ctx VarMap.empty p.patt rep) e.expr in
-  let rep = Rep.empty in
-  (rep, eval' e _p_init rep)
-
-let unseparated_paths ops mctx fctx n_iters p e =
-  let module UP = Evaluator (UnseparatedPaths) in
-  let rec eval (p, sep) ctx e =
-    UP.eval (p, sep) check_infer ops (fctx, mctx, ctx) e
-  and check_infer _m =
-    match (p.patt, Rep.empty) with
-    | Ptuple [ state_p; obs_p ], Rtuple [ state_rep; obs_rep ] ->
-        let obs_ctx = get_ctx VarMap.empty obs_p.patt obs_rep in
-        let rec run (p, sep) prev_state prev_max n_iters =
-          n_iters > 0
-          &&
-          let (rep, _), (p, sep) =
-            eval (p, sep) (get_ctx obs_ctx state_p.patt prev_state) e.expr
-          in
-          let _, may = Rep.fold rep in
-          let new_max =
-            RVMap.fold
-              (fun _ srcs ->
-                RVMap.fold
-                  (fun src len acc ->
-                    if RVSet.mem src may then max len acc else acc)
-                  srcs)
-              (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
-              prev_max
-          in
-          new_max = prev_max
-          ||
-          match rep with
-          | Rtuple [ _; new_state ] ->
-              run (p, sep) new_state new_max (n_iters - 1)
-          | _ -> failwith "step does not return output and new state"
-        in
-        run (UnseparatedPaths.init state_rep) state_rep Int.min_int n_iters
-    | _ -> failwith "step and infer must specify state and input"
   in
-  let rep = Rep.empty in
-  let ctx = get_ctx VarMap.empty p.patt rep in
-  let v = eval (UnseparatedPaths.init rep) ctx e.expr in
-  (rep, v)
+  eval (fctx, mctx, initial_ctx p_state p_in) e
 
-let process_node _p_state _p_in _e _fctx _mctx = failwith "Unimplemented"
+let unseparated_paths n_iters p_state p_in e fctx mctx =
+  let module UP = Evaluator (UnseparatedPaths) in
+  let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ops ctx e
+  and check_infer p_state p_in e fctx mctx =
+    let state_rep = default p_state in
+    let in_ctx = get_ctx VarMap.empty p_in.patt (default p_in) in
+    let rec run (p, sep) prev_state prev_max n_iters =
+      n_iters > 0
+      &&
+      let (rep, _), (p, sep) =
+        eval (p, sep)
+          (fctx, mctx, get_ctx in_ctx p_state.patt prev_state)
+          e.expr
+      in
+      let _, may = Rep.fold rep in
+      let new_max =
+        RVMap.fold
+          (fun _ srcs ->
+            RVMap.fold
+              (fun src len acc ->
+                if RVSet.mem src may then max len acc else acc)
+              srcs)
+          (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
+          prev_max
+      in
+      new_max = prev_max
+      ||
+      match rep with
+      | Rtuple [ _; new_state ] -> run (p, sep) new_state new_max (n_iters - 1)
+      | _ -> failwith "step does not return output and new state"
+    in
+    run (UnseparatedPaths.init state_rep) state_rep Int.min_int n_iters
+  in
+  eval
+    (UnseparatedPaths.init Rep.empty)
+    (fctx, mctx, initial_ctx p_state p_in)
+    e
+
+let process_node p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
+    (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
+  let _ =
+    try ignore (m_consumed p_state p_in e.expr fctx mctx)
+    with Infer -> Printf.printf "m-consumed analysis failed\n"
+  in
+  let _ =
+    try ignore (unseparated_paths 10 p_state p_in e.expr fctx mctx)
+    with Infer -> Printf.printf "Unseparated paths analysis failed\n"
+  in
+  { t_state = default p_state; p_state; p_in; e; fctx; mctx }

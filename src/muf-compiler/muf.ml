@@ -49,6 +49,7 @@ let compile_file file =
           | _ -> failwith "Stream definition lacking step (state, input).")
       | _ -> (fctx, mctx))
     (SMap.empty, SMap.empty) p
-  |> ignore
+  |> ignore;
+  Printf.printf "Analysis complete\n"
 
 let () = try Arg.parse [] compile_file "" with Error -> exit 1
