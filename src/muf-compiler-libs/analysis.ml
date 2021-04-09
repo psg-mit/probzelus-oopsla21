@@ -3,8 +3,6 @@ module VarMap = Map.Make (String)
 module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
 
-let flat_map f s = RVSet.fold (fun v acc -> RVSet.union acc (f v)) s RVSet.empty
-
 module Rep = struct
   (* Lower bound of used RVs, upper bound of used RVs *)
   type scalar = RVSet.t * RVSet.t
@@ -75,10 +73,9 @@ module Rep = struct
             let must', may' = fold r in
             (RVSet.union must must', RVSet.union may may'))
           (RVSet.empty, RVSet.empty) rs
-    | Rstream _ | Rbounded -> (RVSet.empty, RVSet.empty)
+    | Rstream m -> fold m.t_state
+    | Rbounded -> (RVSet.empty, RVSet.empty)
 end
-
-let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
 module type Analysis = sig
   (* Abstract state kept by an analysis *)
@@ -481,6 +478,8 @@ let unseparated_paths n_iters e fctx mctx =
     run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters
   in
   eval (UnseparatedPaths.init Rep.empty) (fctx, mctx, VarMap.empty) e
+
+let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
 let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
     (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
