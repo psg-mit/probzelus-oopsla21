@@ -169,13 +169,10 @@ module Evaluator (A : Analysis) = struct
           | Evar { name = "Array.init" } | Evar { name = "List.init" } -> (
               let _, state = eval ctx state e2.expr in
               match e2.expr with
-              | Etuple [ prob; _; f ] ->
+              | Etuple [ _; f ] ->
                   let (rep, own), state =
                     eval ctx state
-                      (Eapp
-                         ( f,
-                           mk_expr (Etuple [ prob; mk_expr (Econst (Cint 0)) ])
-                         ))
+                      (Eapp (f, mk_expr (Etuple [ mk_expr (Econst (Cint 0)) ])))
                   in
                   ((clear_must rep, own), state)
               | _ -> failwith "init incorrect arguments")
@@ -193,7 +190,7 @@ module Evaluator (A : Analysis) = struct
               | _ -> failwith "List.append incorrect arguments")
           | Evar { name = "List.map" } -> (
               match e2.expr with
-              | Etuple [ prob; f; l ] ->
+              | Etuple [ f; l ] ->
                   let (arg, own'), state = eval ctx state l.expr in
                   let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
@@ -202,15 +199,14 @@ module Evaluator (A : Analysis) = struct
                       state
                       (Eapp
                          ( f,
-                           mk_expr
-                             (Etuple [ prob; mk_expr (Evar { name = "arg" }) ])
+                           mk_expr (Etuple [ mk_expr (Evar { name = "arg" }) ])
                          ))
                   in
                   ((clear_must rep, RVSet.union own own'), state)
               | _ -> failwith "List.map incorrect arguments")
           | Evar { name = "List.iter2" } -> (
               match e2.expr with
-              | Etuple [ prob; f; l1; l2 ] ->
+              | Etuple [ f; l1; l2 ] ->
                   let (arg1, own1), state = eval ctx state l1.expr in
                   let (arg2, own2), state = eval ctx state l2.expr in
                   let fctx, mctx, ctx = ctx in
@@ -225,7 +221,6 @@ module Evaluator (A : Analysis) = struct
                            mk_expr
                              (Etuple
                                 [
-                                  prob;
                                   mk_expr (Evar { name = "arg1" });
                                   mk_expr (Evar { name = "arg2" });
                                 ]) ))
@@ -235,7 +230,7 @@ module Evaluator (A : Analysis) = struct
               | _ -> failwith "List.iter2 incorrect arguments")
           | Evar { name = "List.filter" } -> (
               match e2.expr with
-              | Etuple [ prob; f; l ] ->
+              | Etuple [ f; l ] ->
                   let (arg, own), state = eval ctx state l.expr in
                   let fctx, mctx, ctx = ctx in
                   let (_, own'), state =
@@ -247,8 +242,7 @@ module Evaluator (A : Analysis) = struct
                              (Eapp
                                 ( f,
                                   mk_expr
-                                    (Etuple
-                                       [ prob; mk_expr (Evar { name = "arg" }) ])
+                                    (Etuple [ mk_expr (Evar { name = "arg" }) ])
                                 )),
                            mk_expr (Econst (Cbool true)),
                            mk_expr (Econst (Cbool false)) ))
@@ -442,7 +436,7 @@ let ops =
 let initial_ctx t_init p_state p_in =
   get_ctx (get_ctx VarMap.empty p_state.patt t_init) p_in.patt (default p_in)
 
-let m_consumed t_init p_state p_in e fctx mctx =
+let m_consumed e fctx mctx =
   let module C = Evaluator (Consumed) in
   let rec eval ctx e = C.eval Consumed.init check_infer ops ctx e
   and check_infer t_init p_state p_in e fctx mctx =
@@ -452,9 +446,9 @@ let m_consumed t_init p_state p_in e fctx mctx =
     let _, may = Rep.fold rep in
     RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
   in
-  eval (fctx, mctx, initial_ctx t_init p_state p_in) e
+  eval (fctx, mctx, VarMap.empty) e
 
-let unseparated_paths n_iters t_init p_state p_in e fctx mctx =
+let unseparated_paths n_iters e fctx mctx =
   let module UP = Evaluator (UnseparatedPaths) in
   let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ops ctx e
   and check_infer t_init p_state p_in e fctx mctx =
@@ -486,23 +480,22 @@ let unseparated_paths n_iters t_init p_state p_in e fctx mctx =
     in
     run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters
   in
-  eval
-    (UnseparatedPaths.init Rep.empty)
-    (fctx, mctx, initial_ctx t_init p_state p_in)
-    e
+  eval (UnseparatedPaths.init Rep.empty) (fctx, mctx, VarMap.empty) e
 
 let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
     (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
   let module E = Evaluator (Empty) in
   let (t_init, _), _ =
-    E.eval () (fun _ _ _ _ _ _ -> true) ops (fctx, mctx, VarMap.empty) e_init.expr
+    E.eval ()
+      (fun _ _ _ _ _ _ -> true)
+      ops (fctx, mctx, VarMap.empty) e_init.expr
   in
   let _ =
-    try ignore (m_consumed t_init p_state p_in e.expr fctx mctx)
+    try ignore (m_consumed e_init.expr fctx mctx)
     with Infer -> Printf.printf "m-consumed analysis failed\n"
   in
   let _ =
-    try ignore (unseparated_paths 10 t_init p_state p_in e.expr fctx mctx)
+    try ignore (unseparated_paths 10 e_init.expr fctx mctx)
     with Infer -> Printf.printf "Unseparated paths analysis failed\n"
   in
   { t_init; t_state = t_init; p_state; p_in; e; fctx; mctx }

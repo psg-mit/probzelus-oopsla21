@@ -42,9 +42,11 @@ let compile_file file =
           let p, e = node.n_step in
           match p.patt with
           | Ptuple [ p_state; p_in ] ->
+              let _ = Printf.printf "Checking node %s\n" name in
               ( fctx,
-                SMap.add name (Analysis.process_node node.n_init p_state p_in e fctx mctx) mctx
-              )
+                SMap.add name
+                  (Analysis.process_node node.n_init p_state p_in e fctx mctx)
+                  mctx )
           | _ -> failwith "Stream definition lacking step (state, input).")
       | _ -> (fctx, mctx))
     (SMap.empty, SMap.empty) p
