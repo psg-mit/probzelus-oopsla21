@@ -28,6 +28,7 @@ module Rep = struct
     | Rtuple of ('p, 'e) rep list
     | Rstream of ('p, 'e) stream
     | Rbounded
+    | Rmaybe of ('p, 'e) rep
 
   (* It also contains the set of RVs this term owns, independently of its substructure *)
   type ('p, 'e) t = ('p, 'e) rep * RVSet.t
@@ -55,6 +56,9 @@ module Rep = struct
                 failwith "Cannot join tuple representations of different length"
           in
           Rtuple (join' rs1 rs2)
+      | Rmaybe r1, Rmaybe r2 ->
+          let r, _ = join (r1, own1) (r2, own2) in
+          Rmaybe r
       | _ -> failwith "Cannot join incompatible representations"
     in
     (r, RVSet.union own1 own2)
@@ -75,6 +79,9 @@ module Rep = struct
           (RVSet.empty, RVSet.empty) rs
     | Rstream m -> fold m.t_state
     | Rbounded -> (RVSet.empty, RVSet.empty)
+    | Rmaybe r ->
+        let _, may = fold r in
+        (RVSet.empty, may)
 end
 
 module type Analysis = sig
@@ -109,6 +116,7 @@ let rec default p =
   match p.patt with
   | Pany | Pid _ -> Rep.empty
   | Ptuple ps -> Rep.Rtuple (List.map default ps)
+  | Ptype (p, T_constr (("list" | "array"), [ _ ])) -> Rmaybe (default p)
   | Ptype (p, _) -> default p
 
 (* Raised when an inner infer fails *)
@@ -125,8 +133,10 @@ module Evaluator (A : Analysis) = struct
   let eval (init : A.t) check_infer ops ctx e =
     let rec eval ctx (state : A.t) e : ('p, 'e) Rep.t * A.t =
       match e with
-      | Econst _ | Evar { name = "List.nil" } | Evar { name = "Array.empty" } ->
-          ((Rep.empty, RVSet.empty), state)
+      | Econst _ -> ((Rep.empty, RVSet.empty), state)
+      | Evar { name = "Array.empty" } -> ((Rmaybe Rep.empty, RVSet.empty), state)
+      | Evar { name = "List.nil2" } ->
+          ((Rmaybe (Rtuple [ Rep.empty; Rep.empty ]), RVSet.empty), state)
       | Evar { name } ->
           let _, _, ctx = ctx in
           let v =
@@ -156,12 +166,17 @@ module Evaluator (A : Analysis) = struct
           let rep, own' = Rep.join (rep1, own1) (rep2, own2) in
           ((rep, RVSet.union own own'), A.join state1 state2)
       | Eapp (e1, e2) -> (
+          let mk_expr e = { expr = e; emeta = () } in
+          let get_arg = function
+            | Rep.Rmaybe r -> r
+            | _ -> failwith "List incorrect arguments"
+          in
           let rec clear_must = function
             | Rep.Rscalar (_, may) -> Rep.Rscalar (RVSet.empty, may)
             | Rep.Rtuple rs -> Rep.Rtuple (List.map clear_must rs)
+            | Rep.Rmaybe r -> Rmaybe (clear_must r)
             | r -> r
           in
-          let mk_expr e = { expr = e; emeta = () } in
           match e1.expr with
           | Evar { name = "Array.init" } | Evar { name = "List.init" } -> (
               let _, state = eval ctx state e2.expr in
@@ -171,19 +186,21 @@ module Evaluator (A : Analysis) = struct
                     eval ctx state
                       (Eapp (f, mk_expr (Etuple [ mk_expr (Econst (Cint 0)) ])))
                   in
-                  ((clear_must rep, own), state)
+                  ((Rmaybe (clear_must rep), own), state)
               | _ -> failwith "init incorrect arguments")
           | Evar { name = "Array.get" } -> (
               let _, state = eval ctx state e2.expr in
               match e2.expr with
-              | Etuple [ a; _ ] -> eval ctx state a.expr
+              | Etuple [ a; _ ] ->
+                  let (rep, own), state = eval ctx state a.expr in
+                  ((get_arg rep, own), state)
               | _ -> failwith "Array.get incorrect arguments")
           | Evar { name = "List.append" } -> (
               match e2.expr with
-              | Etuple [ x; xs ] ->
-                  let r, state = eval ctx state x.expr in
-                  let r', state = eval ctx state xs.expr in
-                  (Rep.join r r', state)
+              | Etuple [ l1; l2 ] ->
+                  let (r, o1), state = eval ctx state l1.expr in
+                  let (r', o2), state = eval ctx state l2.expr in
+                  (Rep.join (r, o1) (r', o2), state)
               | _ -> failwith "List.append incorrect arguments")
           | Evar { name = "List.map" } -> (
               match e2.expr with
@@ -192,14 +209,11 @@ module Evaluator (A : Analysis) = struct
                   let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
                     eval
-                      (fctx, mctx, VarMap.add "arg" arg ctx)
+                      (fctx, mctx, VarMap.add "arg" (get_arg arg) ctx)
                       state
-                      (Eapp
-                         ( f,
-                           mk_expr (Etuple [ mk_expr (Evar { name = "arg" }) ])
-                         ))
+                      (Eapp (f, mk_expr (Evar { name = "arg" })))
                   in
-                  ((clear_must rep, RVSet.union own own'), state)
+                  ((Rmaybe (clear_must rep), RVSet.union own own'), state)
               | _ -> failwith "List.map incorrect arguments")
           | Evar { name = "List.iter2" } -> (
               match e2.expr with
@@ -211,7 +225,8 @@ module Evaluator (A : Analysis) = struct
                     eval
                       ( fctx,
                         mctx,
-                        VarMap.add "arg1" arg1 (VarMap.add "arg2" arg2 ctx) )
+                        VarMap.add "arg1" (get_arg arg1)
+                          (VarMap.add "arg2" (get_arg arg2) ctx) )
                       state
                       (Eapp
                          ( f,
@@ -222,8 +237,7 @@ module Evaluator (A : Analysis) = struct
                                   mk_expr (Evar { name = "arg2" });
                                 ]) ))
                   in
-                  ( (clear_must rep, RVSet.union own (RVSet.union own1 own2)),
-                    state )
+                  ((rep, RVSet.union own (RVSet.union own1 own2)), state)
               | _ -> failwith "List.iter2 incorrect arguments")
           | Evar { name = "List.filter" } -> (
               match e2.expr with
@@ -232,21 +246,18 @@ module Evaluator (A : Analysis) = struct
                   let fctx, mctx, ctx = ctx in
                   let (_, own'), state =
                     eval
-                      (fctx, mctx, VarMap.add "arg" arg ctx)
+                      (fctx, mctx, VarMap.add "arg" (get_arg arg) ctx)
                       state
                       (Eif
-                         ( mk_expr
-                             (Eapp
-                                ( f,
-                                  mk_expr
-                                    (Etuple [ mk_expr (Evar { name = "arg" }) ])
-                                )),
+                         ( mk_expr (Eapp (f, mk_expr (Evar { name = "arg" }))),
                            mk_expr (Econst (Cbool true)),
                            mk_expr (Econst (Cbool false)) ))
                   in
-                  ((clear_must arg, RVSet.union own own'), state)
+                  ((arg, RVSet.union own own'), state)
               | _ -> failwith "List.filter incorrect arguments")
-          | Evar { name = "List.length" } -> eval ctx state e2.expr
+          | Evar { name = "List.length" } ->
+              let (_, own), state = eval ctx state e2.expr in
+              ((Rep.empty, own), state)
           | Evar { name = "eval" } ->
               let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
@@ -280,9 +291,6 @@ module Evaluator (A : Analysis) = struct
               es
           in
           ((Rtuple (List.rev rep), own), state)
-      | Erecord _ -> failwith "Record not implemented"
-      | Efield _ -> failwith "Record access not implemented"
-      | Esequence _ -> failwith "Sequence not implemented"
       | Einfer (_, { name }) -> (
           let _, mctx, _ = ctx in
           match VarMap.find_opt name mctx with
@@ -338,6 +346,10 @@ module Evaluator (A : Analysis) = struct
               ((out, RVSet.union own own'), state)
           | Rep.Rbounded -> ((Rep.empty, own), state)
           | _ -> failwith "Cannot unfold non-stream")
+      | Esequence (e1, e2) ->
+          eval ctx state (Elet ({ patt = Pany; pmeta = () }, e1, e2))
+      | Erecord _ -> failwith "Record not implemented"
+      | Efield _ -> failwith "Record access not implemented"
     in
     eval ctx init e
 end

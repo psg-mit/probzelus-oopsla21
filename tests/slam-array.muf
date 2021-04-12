@@ -1,9 +1,9 @@
-val init = fun i -> sample (bernoulli (0.5))
+val init_f = fun i -> sample (bernoulli (0.5))
 
 val slam = stream {
   init = (true, 0., Array.empty);
-  step ((first, x, map), (obs, cmd)) =
-    let map = if first then Array.init (100, init) else map in
+  step ((first, x, map : float list), (obs, cmd)) =
+    let map = if first then Array.init (100, init_f) else map in
     let wheel_slip = sample (bernoulli (0.5)) in
     let x = if first then 0. else (if wheel_slip then x else plus (x, cmd)) in
     let o = Array.get (map, x) in

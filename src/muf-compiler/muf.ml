@@ -30,6 +30,7 @@ let parse parsing_fun lexing_fun source_name =
       syntax_error (source_name, loc)
 
 let compile_file file =
+  let _ = Printf.printf "Processing %s\n" file in
   let p = parse Parser.program (Lexer.token ()) file in
   let module SMap = Map.Make (String) in
   let open Muf in

@@ -6,7 +6,7 @@ val clutter_init_fn = fun _ -> bernoulli (tr)
 val obsfn = fun (var, value) -> observe (var, value)
 
 val mtt = stream {
-  init = (true, List.nil);
+  init = (true, List.nil2);
   step ((first, t : (int * float) list), (inp : float list, cmd)) =
     let last_t = t in
     let t_survived = List.filter (death_fn, last_t) in
@@ -18,7 +18,7 @@ val mtt = stream {
     let n_clutter = sub (List.length (inp), List.length (obs)) in
     let () = observe (poisson (0.5), n_clutter) in
     let clutter = List.init (n_clutter, clutter_init_fn) in
-    let obs_shuffled = eval (sample (shuffle (List.append (obs, clutter)))) in
+    let obs_shuffled = List.append (obs, clutter) in
     let () = if (not (lt (n_clutter, 0))) then List.iter2 (obsfn, obs_shuffled, inp) else () in
     (t, (false, t))
 }
