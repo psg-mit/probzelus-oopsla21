@@ -9,7 +9,6 @@ module Rep = struct
 
   (* Streams track their current state, syntax, and contexts *)
   type ('p, 'e) stream = {
-    t_init : ('p, 'e) rep;
     t_state : ('p, 'e) rep;
     p_state : 'p;
     p_in : 'p;
@@ -118,6 +117,13 @@ let rec default p =
   | Ptuple ps -> Rep.Rtuple (List.map default ps)
   | Ptype (p, T_constr (("list" | "array"), [ _ ])) -> Rmaybe (default p)
   | Ptype (p, _) -> default p
+
+let rec erase = function
+  | Rep.Rscalar _ -> Rep.empty
+  | Rtuple rs -> Rtuple (List.map erase rs)
+  | Rstream m -> Rstream { m with t_state = erase m.t_state }
+  | Rbounded -> Rbounded
+  | Rmaybe r -> Rmaybe (erase r)
 
 (* Raised when an inner infer fails *)
 exception Infer
@@ -296,8 +302,9 @@ module Evaluator (A : Analysis) = struct
           match VarMap.find_opt name mctx with
           | None -> failwith ("Illegal stream " ^ name)
           | Some m ->
-              if check_infer m.t_init m.p_state m.p_in m.e m.fctx m.mctx then
-                ((Rbounded, RVSet.empty), state)
+              if
+                check_infer (erase m.t_state) m.p_state m.p_in m.e m.fctx m.mctx
+              then ((Rbounded, RVSet.empty), state)
               else raise Infer)
       | Ecall_init e -> (
           match e.expr with
@@ -311,8 +318,7 @@ module Evaluator (A : Analysis) = struct
           let (rep, own), state = eval ctx state e.expr in
           let rep =
             match rep with
-            | Rep.Rstream m ->
-                Rep.Rstream { m with t_state = default m.p_state }
+            | Rep.Rstream m -> Rep.Rstream { m with t_state = erase m.t_state }
             | Rep.Rbounded -> Rep.Rbounded
             | _ -> failwith "Expected stream"
           in
@@ -322,7 +328,7 @@ module Evaluator (A : Analysis) = struct
           let (arg, own'), state = eval ctx state e.expr in
           let own = RVSet.union own own' in
           match rep with
-          | Rep.Rstream { t_init; t_state; p_state; p_in; e; fctx; mctx } ->
+          | Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx } ->
               let (out, own'), state =
                 eval
                   ( fctx,
@@ -338,8 +344,7 @@ module Evaluator (A : Analysis) = struct
                     Rep.Rtuple
                       [
                         t_out;
-                        Rep.Rstream
-                          { t_init; t_state; p_state; p_in; e; fctx; mctx };
+                        Rep.Rstream { t_state; p_state; p_in; e; fctx; mctx };
                       ]
                 | _ -> failwith "Illegal stream step output"
               in
@@ -509,4 +514,4 @@ let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
     try ignore (unseparated_paths 10 e_init.expr fctx mctx)
     with Infer -> Printf.printf "Unseparated paths analysis failed\n"
   in
-  { t_init; t_state = t_init; p_state; p_in; e; fctx; mctx }
+  { t_state = t_init; p_state; p_in; e; fctx; mctx }
