@@ -1,12 +1,12 @@
 val kalman = stream {
   init = (true, 0., 0.);
-  step ((first, x_0, x), obs) =
-    let (x_0, x) =
-      if first then (let x_0 = sample (gaussian(0., 1.)) in (x_0, x_0))
-      else (x_0, x) in
-    let x = sample (gaussian (x, 1.)) in
-    let () = observe (x, obs) in
-    (x_0, (false, x_0, x))
+  step ((first, i, pre_x), obs) =
+    let (i, pre_x) =
+      if first then (let i = sample (gaussian(0., 1.)) in (i, i))
+      else (i, pre_x) in
+    let x = sample (gaussian (pre_x, 1.)) in
+    let () = observe (gaussian (x, 1.), obs) in
+    (x, (false, i, x))
 }
 
 val main = stream {
