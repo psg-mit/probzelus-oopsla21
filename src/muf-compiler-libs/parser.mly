@@ -122,9 +122,9 @@ typ:
 | INTT { Tany }
 | FLOATT { Tany }
 | BOOLT { Tany }
-| t = typ DIST { T_constr ("dist", [t]) }
+| t = typ DIST { Tconstr ("dist", [t]) }
 | UNIT { Ttuple [] }
 | LPAREN t = typ STAR tl = separated_nonempty_list(STAR, typ) RPAREN { Ttuple (t::tl) }
 | UNDERSCORE { Tany }
-| t = typ ARRAY { T_constr ("array", [t]) }
-| t = typ LIST { T_constr ("list", [t]) }
+| t = typ ARRAY { Tconstr ("array", [t]) }
+| t = typ LIST { Tconstr ("list", [t]) }

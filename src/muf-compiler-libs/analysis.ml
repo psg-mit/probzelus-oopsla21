@@ -115,8 +115,9 @@ let rec default p =
   match p.patt with
   | Pany | Pid _ -> Rep.empty
   | Ptuple ps -> Rep.Rtuple (List.map default ps)
-  | Ptype (p, T_constr (("list" | "array"), [ _ ])) -> Rmaybe (default p)
+  | Ptype (p, Tconstr (("list" | "array"), [ _ ])) -> Rmaybe (default p)
   | Ptype (p, _) -> default p
+  | Pconst _ | Pconstr (_, _) -> failwith "Unimplemented"
 
 let rec erase = function
   | Rep.Rscalar _ -> Rep.empty
@@ -355,6 +356,7 @@ module Evaluator (A : Analysis) = struct
           eval ctx state (Elet ({ patt = Pany; pmeta = () }, e1, e2))
       | Erecord _ -> failwith "Record not implemented"
       | Efield _ -> failwith "Record access not implemented"
+      | Econstr (_, _) | Ematch (_, _) | Efun (_, _) -> failwith "Unimplemented"
     in
     eval ctx init e
 end
