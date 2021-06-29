@@ -446,6 +446,7 @@ let ops =
   [
     "bernoulli";
     "gaussian";
+    "random_order";
     "beta";
     "delta";
     "infer_init";

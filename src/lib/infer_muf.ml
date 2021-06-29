@@ -30,13 +30,22 @@ let add_int (x, y) = x + y
 
 let sub_int (x, y) = x - y
 
-module Array = struct
-  let empty = [||]
+let random_order len =
+  let sample_fn _ =
+    let arr = Array.init len (fun i -> i) in
+    for n = Array.length arr - 1 downto 1 do
+      let k = Random.int (n + 1) in
+      let tmp = arr.(n) in
+      arr.(n) <- arr.(k);
+      arr.(k) <- tmp
+    done;
+    arr
+  in
 
-  let init (n, f) = Array.init n f
+  let obs_fn _ = assert false in
 
-  let get (a, x) = Array.get a x
-end
+  Infer_ds_streaming.of_distribution (Types.Dist_sampler(sample_fn, obs_fn))
+
 
 module List = struct
   let length l = List.length l
@@ -55,5 +64,16 @@ module List = struct
     let f a b = f (a, b) in
     List.iter2 f l1 l2
 
-  let shuffle (order, l) = assert false
+  let shuffle (order, l) = 
+    let l_arr = Array.of_list l in
+    let new_arr = Array.init (Array.length l_arr) (fun i -> Array.get l_arr (Array.get order i)) in
+    Array.to_list new_arr
+end
+
+module Array = struct
+  let empty = [||]
+
+  let init (n, f) = Array.init n f
+
+  let get (a, x) = Array.get a x
 end

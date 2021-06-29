@@ -21,7 +21,7 @@ val mtt = stream {
     let () = observe (of_distribution (poisson (0.5)), n_clutter) in
     let clutter = List.init (n_clutter, clutter_init_fn) in
     let obs_shuffled = List.append (obs, clutter) in
-    let order = sample (gaussian (const (1.), 1.)) in
+    let order = eval (sample (random_order (List.length (obs_shuffled)))) in
     let obs_shuffled = List.shuffle (order, obs_shuffled) in
     let () = if (not (lt (n_clutter, 0))) then List.iter2 (obsfn, obs_shuffled, inp) else () in
     (lst (t_expr), (false, t))
