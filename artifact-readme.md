@@ -81,14 +81,6 @@ Furthermore, these core constructs may also be used inside the initial value:
 
 There are a number of built-in distributions and operators such as `gaussian`. Please examine the supplied programs to see examples of these built-in operators.
 
-### Executing uF programs
-
-TODO: describe how to execute uF programs?
-
-### Relationship to ProbZelus
-
-TODO: describe how ProbZelus programs relate to this artifact?
-
 ### Claims Supported by Artifact
 
 The artifact supports all claims in the Evaluation section of the paper. In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties. In the artifact, the iteration bound for the unseparated paths analysis is set to 10 iterations, which is the same as in the paper.
