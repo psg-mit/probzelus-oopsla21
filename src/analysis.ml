@@ -265,6 +265,18 @@ module Evaluator (A : Analysis) = struct
           | Evar { name = "List.length" } ->
               let (_, own), state = eval ctx state e2.expr in
               ((Rep.empty, own), state)
+          | Evar { name = "List.shuffle" } -> (
+              match e2.expr with
+              | Etuple [ order; l ] -> (
+                  let (arg, o1), state = eval ctx state order.expr in
+                  let state = A.value (Rep.get arg, state) in
+                  let (r, o2), state = eval ctx state l.expr in
+                  match r with
+                  | Rmaybe r -> 
+                      let (r, o) = Rep.join (arg, o1) (r, o2) in 
+                      ((Rep.Rmaybe r, o), state)
+                  | _ -> assert false)
+              | _ -> failwith "List.shuffle incorrect arguments")
           | Evar { name = "eval" } ->
               let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
