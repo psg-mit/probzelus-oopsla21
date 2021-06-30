@@ -12,14 +12,5 @@
 
 (package
  (name muf)
- (synopsis "The muF compiler")
- (description "A compiler for the muF language.")
- (depends
-  (muf-compiler-libs (= 0.1.0))))
-
-(package
- (name muf-compiler-libs)
- (synopsis "Internal muF compiler library")
- (description "Internal muF compiler library.")
- (depends
-  (dune (> 1.5))))
+ (synopsis "The muF analyzer")
+ (description "Static analyzer for delayed sampling on muF programs"))

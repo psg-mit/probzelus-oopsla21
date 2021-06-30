@@ -13,7 +13,7 @@ In this directory, type `make clean` then `make` to build the artifact binary fr
 The `tests` directory contains a set of `.muf` programs corresponding to the benchmarks in the paper. Execute the artifact on each program by supplying it as an argument, for example:
 
 ```shell
-_build/install/default/bin/muf tests/outlier.muf
+./analyzer.exe tests/outlier.muf
 ```
 
 which will display a message indicating the results of the static analysis on the program:

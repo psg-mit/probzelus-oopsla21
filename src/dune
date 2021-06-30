@@ -1,0 +1,18 @@
+(ocamllex lexer)
+(menhir
+ (modules parser))
+
+(library
+ (name muf_compiler_libs)
+ (public_name muf.muf_compiler_libs)
+ (libraries zelus.zlcompilerlibs)
+ (modules :standard \ analyzer)
+ (preprocess (pps ppx_deriving.show ppx_deriving.fold ppx_deriving.map)))
+
+(executable
+ (package muf)
+ (name analyzer)
+ (public_name analyzer)
+ (modules analyzer)
+ (promote (until-clean) (into ..))
+ (libraries compiler-libs.common muf_compiler_libs))
