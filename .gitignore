@@ -2,3 +2,4 @@
 _build/
 .merlin
 *.exe
+tests/*.ml

@@ -6,7 +6,7 @@
  (name muf_compiler_libs)
  (public_name muf.muf_compiler_libs)
  (libraries zelus.zlcompilerlibs)
- (modules :standard \ analyzer)
+ (modules :standard \ analyzer compiler)
  (preprocess (pps ppx_deriving.show ppx_deriving.fold ppx_deriving.map)))
 
 (executable
@@ -16,3 +16,11 @@
  (modules analyzer)
  (promote (until-clean) (into ..))
  (libraries compiler-libs.common muf_compiler_libs))
+
+(executable
+ (package muf)
+ (name compiler)
+ (public_name compiler)
+ (modules compiler)
+ (promote (until-clean) (into ..))
+ (libraries compiler-libs.common muf_compiler_libs zelus.zlcompilerlibs))
