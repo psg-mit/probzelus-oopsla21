@@ -7,7 +7,11 @@
 
 (source (github psg-mit/probzelus-analysis-impl))
 (license Apache-2.0)
-(authors "Charles Yuan" "Louis Mandel")
+(authors  "Eric Atkinson"
+          "Guillaume Baudart"
+          "Michael Carbin"
+          "Louis Mandel"
+          "Charles Yuan")
 (maintainers "Louis Mandel")
 
 (package
