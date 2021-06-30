@@ -20,8 +20,11 @@ let compile_file file =
   Format.fprintf mainff
     "@[<v>@[(* simulation (discrete) function *)@]@;\
      @[<v 2>@[let main =@]@;\
-     @[let mem = ref (Muflib.init %s) in@]@;\
-     @[(fun x -> let s, _ = Muflib.step !mem x in mem := s)@]@]@]@."
+     @[let mem = ref (Muflib.init %s.main) in@]@;\
+     @[(fun x -> let s, _ = Muflib.step !mem x in mem := s)@]@]@];;@.\
+     @[<v>(* (discrete) simulation loop *)@;\
+         while true do main () done;@;\
+         exit(1);;@]@."
     (String.capitalize_ascii name);
   close_out mainc;
   Format.printf "Created main.ml@.";
