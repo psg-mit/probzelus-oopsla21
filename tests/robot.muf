@@ -6,9 +6,11 @@ val kalman = stream {
     (x, x)
 }
 
+val lqr = fun (target, x) -> x
+
 val controller = stream {
     init = ();
-    step (_, (target, x)) = ((), x)
+    step (_, (target, x)) = ((), lqr (target, x))
 }
 
 val robot = stream {
