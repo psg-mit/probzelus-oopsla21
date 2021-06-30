@@ -10,5 +10,9 @@ val g_g = stream {
 
 val main = stream {
   init = infer (1, g_g);
-  step (g_g, obs) = unfold (g_g, obs)
+  step (g_g, ()) = 
+    let (d, s) = unfold (g_g, 1.) in
+    let () = print_any_t (d) in
+    let () = print_newline (()) in
+    ((), s)
 }

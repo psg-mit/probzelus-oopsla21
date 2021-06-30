@@ -11,5 +11,9 @@ val slam = stream {
 
 val main = stream {
   init = infer (1, slam);
-  step (slam, obs) = unfold (slam, obs)
+  step (slam, ()) = 
+    let (d, s) = unfold (slam, (1., 1.)) in
+    let () = print_any_t (d) in
+    let () = print_newline (()) in
+    ((), s)
 }

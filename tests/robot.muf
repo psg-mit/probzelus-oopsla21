@@ -16,5 +16,7 @@ val robot = stream {
   step ((c, k), (obs, target)) =
     let (x_dist, k') = unfold (k, obs) in
     let (u, c') = unfold (c, (target, mean (x_dist))) in
+    let () = print_any_t (u) in
+    let () = print_newline (()) in
     (u, (c', k'))
 }

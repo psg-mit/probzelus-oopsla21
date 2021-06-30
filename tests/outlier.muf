@@ -15,5 +15,9 @@ val outlier = stream {
 
 val main = stream {
   init = infer (1, outlier);
-  step (outlier, obs) = unfold (outlier, obs)
+  step (outlier, ()) = 
+    let (d, s) = unfold (outlier, 1.) in
+    let () = print_any_t (d) in
+    let () = print_newline (()) in
+    ((), s)
 }
