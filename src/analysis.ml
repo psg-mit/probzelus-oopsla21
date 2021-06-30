@@ -437,6 +437,8 @@ let ops =
     "beta";
     "delta";
     "infer_init";
+    "const";
+    "pair";
     "ite";
     "plus";
     "sub";
@@ -447,6 +449,8 @@ let ops =
     "shuffle";
     "not";
     "lt";
+    "print_any_t";
+    "print_newline";
   ]
 
 let initial_ctx t_init p_state p_in =
