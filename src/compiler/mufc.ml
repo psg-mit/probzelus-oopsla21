@@ -23,9 +23,9 @@ let analyze_file p =
     (SMap.empty, SMap.empty) p
   |> ignore
 
-let compile_file muf_list ml_name =
+let compile_file muf_list name =
   let ml_list = List.map Muf_gencode.compile_program [muf_list] in
-  let mlc = open_out ml_name in
+  let mlc = open_out (name ^ ".ml") in
   let mlff = Format.formatter_of_out_channel mlc in
   Format.fprintf mlff "%s@.%s@.%s@.%s@.%s@.@.%a@."
     "open Probzelus"
@@ -51,10 +51,11 @@ let compile_simulator name node =
     (String.capitalize_ascii name) node;
   close_out mainc
   
-let print_cmd ml_name node = 
+let print_cmd name node = 
   let cmd = 
     "ocamlfind ocamlc -linkpkg -package muf " ^ 
-    ml_name ^ " " ^ node ^ ".ml -o " ^ node ^".exe"
+    name ^ ".ml " ^ node ^ ".ml " 
+    ^ "-o " ^ name ^ "_" ^ node ^ ".exe"
   in
   Format.printf "%s@." cmd;
   ignore (Sys.command cmd)
@@ -62,16 +63,15 @@ let print_cmd ml_name node =
 let main file = 
   let name = Filename.chop_extension file in
   let node = !Misc.simulation_node in
-  let ml_name = name ^ ".ml" in
   let muf_list = Misc.parse Parser.program (Lexer.token ()) file in
   Format.printf "-- Analyzing %s@." file;
   analyze_file muf_list;
   if not !Misc.only_check then begin
-    Format.printf "-- Generating %s@." ml_name;
-    compile_file muf_list ml_name;
+    Format.printf "-- Generating %s.ml@." name;
+    compile_file muf_list name;
     Format.printf "-- Generating %s.ml@." node;
     compile_simulator name node;
-    print_cmd ml_name node
+    print_cmd name node
   end
 
 
