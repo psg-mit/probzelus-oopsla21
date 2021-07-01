@@ -1,0 +1,4 @@
+(library
+ (name muf)
+ (public_name muf)
+ (libraries probzelus))
