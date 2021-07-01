@@ -54,7 +54,7 @@ gaussian (0.998758, 0.624845)
 
 Note that stream processors never stops. Use `^C` to stop the execution.
 
-You can also run `make tests` to compile all the examples.
+You can also run `make tests` from the root of the project to compile all the examples.
 
 ## Step by Step Instructions
 
@@ -94,7 +94,7 @@ val <stream-name> = stream {
 }
 ```
 
-where `stream-name` is the identifier for the stream, `init-val` is the initial value of the stream, and `step-exp` is the expression evaluated at every iteration. `state-pat` is a pattern that binds the input state of the step function and `arg-pat` is a pattern that binds the argument being supplied to the stream. Note that `init-val` must be a syntactic value, such as a numeric literal, and that `state-pat` should be compatible with the type of the initial value.
+where `stream-name` is the identifier for the stream, `init-val` is the initial value of the stream, and `step-exp` is the expression evaluated at every iteration. `state-pat` is a pattern that binds the input state of the step function and `arg-pat` is a pattern that binds the argument being supplied to the stream. Note that `init-val` must be a syntactic value (such as a numeric literal) or the instantiation of a stream function (`init` or `infer`) and that `state-pat` should be compatible with the type of the initial value.
 
 The step function accepts the current state and a supplied argument to compute a pair of (new state, output value). Inside the step function, the following core constructs can be used:
 
@@ -113,4 +113,4 @@ There are a number of built-in distributions and operators such as `gaussian`. P
 
 ### Claims Supported by Artifact
 
-The artifact supports all claims in the Evaluation section of the paper. In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties. In the artifact, the iteration bound for the unseparated paths analysis is set to 10 iterations, which is the same as in the paper.
+The artifact supports all claims in the Evaluation section of the paper. In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties. In the artifact, the iteration bound for the unseparated paths analysis is set to 10 iterations, which is the same as in the paper. The implementation of the type system presented in the paper is available in the file `src/compiler/analysis.ml`.
