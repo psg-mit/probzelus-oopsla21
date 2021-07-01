@@ -1,4 +1,4 @@
-open Muf_compiler_libs
+open Mufcompilerlibs
 
 let compile_file file =
   let _ = Printf.printf "Processing %s\n" file in
