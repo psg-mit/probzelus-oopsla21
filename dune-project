@@ -16,5 +16,5 @@
 
 (package
  (name muf)
- (synopsis "The muF analyzer")
- (description "Static analyzer for delayed sampling on muF programs"))
+ (synopsis "The muF compiler")
+ (description "Compiler, static analysis, and runtime for muF"))

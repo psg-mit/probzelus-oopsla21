@@ -525,11 +525,15 @@ let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
       ops (fctx, mctx, VarMap.empty) e_init.expr
   in
   let _ =
-    try ignore (m_consumed e_init.expr fctx mctx)
-    with Infer -> Printf.printf "m-consumed analysis failed\n"
+    try 
+      ignore (m_consumed e_init.expr fctx mctx);
+      Printf.printf "    m-consumed analysis: success\n"
+    with Infer -> Printf.printf "    m-consumed analysis: failed\n"
   in
   let _ =
-    try ignore (unseparated_paths 10 e_init.expr fctx mctx)
-    with Infer -> Printf.printf "Unseparated paths analysis failed\n"
+    try 
+      ignore (unseparated_paths 10 e_init.expr fctx mctx);
+      Printf.printf "    Unseparated paths analysis: success\n"
+    with Infer -> Printf.printf "    Unseparated paths analysis: failed\n"
   in
   { t_state = t_init; p_state; p_in; e; fctx; mctx }
