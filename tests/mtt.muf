@@ -1,8 +1,8 @@
-val death_fn = fun (_, _) -> eval (sample (bernoulli (0.5)))
+val death_fn = fun (_, _) -> eval (sample (bernoulli (const (0.5))))
 val new_track_init_fn = fun _ -> (0, sample (gaussian (const (0.5), 1.)))
 val state_update_fn = fun (tr_num, tr) -> (tr_num, sample (gaussian (tr, 1.)))
 val observe_fn = fun (_, tr) -> gaussian (tr, 1.)
-val clutter_init_fn = fun _ -> gaussian (tr, 1.)
+val clutter_init_fn = fun tr -> gaussian (tr, 1.)
 val obsfn = fun (var, value) -> observe (var, value)
 
 val mtt = stream {
