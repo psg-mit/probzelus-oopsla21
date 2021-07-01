@@ -1,4 +1,4 @@
-all: coin-outlier_main.exe \
+all: coin_outlier_main.exe \
 	 coin_main.exe \
 	 gaussian_gaussian_main.exe \
 	 kalman_first_main.exe \
@@ -10,8 +10,8 @@ all: coin-outlier_main.exe \
 	 mtt.check \
 	 outlier_main.exe \
 	 robot.check \
-	 slam-array.check \
-	 slam-tuple.check \
+	 slam_array.check \
+	 slam_tuple.check \
 	 slam.check \
 	 tuple_main.exe \
 	 up_multiple_its_main.exe

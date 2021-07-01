@@ -1,11 +1,11 @@
 val coin = stream {
-  init = (true, 0.);
-  step ((first, x), obs) =
+  init = (true, const (0.5));
+  step ((first, p), obs) =
     let p = if first then sample (beta (1., 1.)) else p in
-    let outlier = sample (bernoulli (0.5)) in
-    let x = if outlier then bernoulli (0.5) else bernoulli (p) in
+    let outlier = sample (bernoulli (const (0.5))) in
+    let x = if eval (outlier) then bernoulli (const (0.5)) else bernoulli (p) in
     let () = observe (x, obs) in
-    (x, (false, x))
+    (p, (false, p))
 }
 
 val main = stream {
