@@ -1,5 +1,5 @@
 val kalman_helper = stream {
-  init = 0.0;
+  init = const (0.);
   step (_, x) =
     let x' = sample (gaussian (x, 1.)) in
     (x', x')

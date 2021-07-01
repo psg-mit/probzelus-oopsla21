@@ -1,5 +1,5 @@
 val kalman = stream {
-  init = 0.;
+  init = const (0.);
   step (pre_x, obs) =
     let x = sample (gaussian (pre_x, 1.0)) in
     let () = observe (gaussian (x, 1.0), obs) in
