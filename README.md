@@ -8,7 +8,7 @@ First, import `Debian.ova` into your virtualization software. In our testing, we
 
 Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). Change into the `probzelus-analysis-impl-master` directory to access the main artifact files.
 
-In this directory, type `make install` to rebuild the artifact from scratch.
+In this directory, type `make init`, and `make install` to rebuild the artifact from scratch.
 You should now have the `mufc` compiler in your path.
 
 ```
