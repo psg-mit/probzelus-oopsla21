@@ -1,21 +1,22 @@
-.PHONY: all build opam
+.PHONY: all build init tests
 .PHONY: clean cleanall
 
 
 build:
-	dune build @install
+	dune build
 
-install:
-	opam reinstall -y muf-compiler-libs muf
-
-opam: muf.opam muf-compiler-libs.opam
+init:
 	opam pin -k path .
 
-muf.opam muf-compiler-libs.opam: dune-project
-	dune build $<
+install:
+	opam reinstall -y muf
+
+tests:
+	make -C tests
 
 clean:
 	rm -rf _build
+	make -C tests clean
 
 cleanall: clean
 	rm -rf *~ */*~ */*/*~
