@@ -1,5 +1,5 @@
 val coin = stream {
-  init = (true, 0.);
+  init = (true, const (0.));
   step ((first, xt), yobs) =
     let xt = if first then sample (beta (1., 1.)) else xt in
     let () = observe (bernoulli (xt), yobs) in
