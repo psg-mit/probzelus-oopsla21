@@ -1,0 +1,21 @@
+(ocamllex lexer)
+(menhir
+ (modules parser))
+
+(library
+ (name mufcompilerlibs)
+ (public_name muf.mufcompilerlibs)
+ (libraries zelus.zlcompilerlibs probzelus)
+ (modules :standard \ mufc)
+ (preprocess (pps ppx_deriving.show ppx_deriving.fold ppx_deriving.map)))
+
+(executable
+ (name mufc)
+ (modules mufc)
+ (promote (until-clean) (into ../..))
+ (libraries compiler-libs.common mufcompilerlibs zelus.zlcompilerlibs))
+
+(install
+ (package muf)
+ (section bin)
+ (files (mufc.exe as mufc)))

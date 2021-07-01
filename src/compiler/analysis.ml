@@ -265,6 +265,18 @@ module Evaluator (A : Analysis) = struct
           | Evar { name = "List.length" } ->
               let (_, own), state = eval ctx state e2.expr in
               ((Rep.empty, own), state)
+          | Evar { name = "List.shuffle" } -> (
+              match e2.expr with
+              | Etuple [ order; l ] -> (
+                  let (arg, o1), state = eval ctx state order.expr in
+                  let state = A.value (Rep.get arg, state) in
+                  let (r, o2), state = eval ctx state l.expr in
+                  match r with
+                  | Rmaybe r -> 
+                      let (r, o) = Rep.join (arg, o1) (r, o2) in 
+                      ((Rep.Rmaybe r, o), state)
+                  | _ -> assert false)
+              | _ -> failwith "List.shuffle incorrect arguments")
           | Evar { name = "eval" } ->
               let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
@@ -437,6 +449,8 @@ let ops =
     "beta";
     "delta";
     "infer_init";
+    "const";
+    "pair";
     "ite";
     "plus";
     "sub";
@@ -447,6 +461,8 @@ let ops =
     "shuffle";
     "not";
     "lt";
+    "print_any_t";
+    "print_newline";
   ]
 
 let initial_ctx t_init p_state p_in =
@@ -509,11 +525,15 @@ let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
       ops (fctx, mctx, VarMap.empty) e_init.expr
   in
   let _ =
-    try ignore (m_consumed e_init.expr fctx mctx)
-    with Infer -> Printf.printf "m-consumed analysis failed\n"
+    try 
+      ignore (m_consumed e_init.expr fctx mctx);
+      Printf.printf "    m-consumed analysis: success\n"
+    with Infer -> Printf.printf "    m-consumed analysis: failed\n"
   in
   let _ =
-    try ignore (unseparated_paths 10 e_init.expr fctx mctx)
-    with Infer -> Printf.printf "Unseparated paths analysis failed\n"
+    try 
+      ignore (unseparated_paths 10 e_init.expr fctx mctx);
+      Printf.printf "    Unseparated paths analysis: success\n"
+    with Infer -> Printf.printf "    Unseparated paths analysis: failed\n"
   in
   { t_state = t_init; p_state; p_in; e; fctx; mctx }

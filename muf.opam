@@ -2,15 +2,20 @@
 opam-version: "2.0"
 version: "0.1.0"
 synopsis: "The muF compiler"
-description: "A compiler for the muF language."
+description: "Compiler, static analysis, and runtime for muF"
 maintainer: ["Louis Mandel"]
-authors: ["Charles Yuan" "Louis Mandel"]
+authors: [
+  "Eric Atkinson"
+  "Guillaume Baudart"
+  "Michael Carbin"
+  "Louis Mandel"
+  "Charles Yuan"
+]
 license: "Apache-2.0"
 homepage: "https://github.com/psg-mit/probzelus-analysis-impl"
 bug-reports: "https://github.com/psg-mit/probzelus-analysis-impl/issues"
 depends: [
   "dune" {>= "2.7"}
-  "muf-compiler-libs" {= "0.1.0"}
   "odoc" {with-doc}
 ]
 build: [

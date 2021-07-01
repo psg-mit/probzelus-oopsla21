@@ -1,3 +1,7 @@
 *~
 _build/
 .merlin
+*.exe
+tests/*.ml
+*.cmi
+*.cmo

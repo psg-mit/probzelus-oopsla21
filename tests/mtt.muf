@@ -1,8 +1,8 @@
-val death_fn = fun (_, _) -> eval (sample (bernoulli (0.5)))
-val new_track_init_fn = fun _ -> (0, sample (bernoulli (0.5)))
-val state_update_fn = fun (tr_num, tr) -> (tr_num, sample (bernoulli (tr)))
-val observe_fn = fun (_, tr) -> bernoulli (tr)
-val clutter_init_fn = fun _ -> bernoulli (tr)
+val death_fn = fun (_, _) -> eval (sample (bernoulli (const (0.5))))
+val new_track_init_fn = fun _ -> (0, sample (gaussian (const (0.5), 1.)))
+val state_update_fn = fun (tr_num, tr) -> (tr_num, sample (gaussian (tr, 1.)))
+val observe_fn = fun (_, tr) -> gaussian (tr, 1.)
+val clutter_init_fn = fun tr -> gaussian (tr, 1.)
 val obsfn = fun (var, value) -> observe (var, value)
 
 val mtt = stream {
@@ -19,6 +19,8 @@ val mtt = stream {
     let () = observe (poisson (0.5), n_clutter) in
     let clutter = List.init (n_clutter, clutter_init_fn) in
     let obs_shuffled = List.append (obs, clutter) in
+    let order = sample (gaussian (const (1.), 1.)) in
+    let obs_shuffled = List.shuffle (order, obs_shuffled) in
     let () = if (not (lt (n_clutter, 0))) then List.iter2 (obsfn, obs_shuffled, inp) else () in
     (t, (false, t))
 }

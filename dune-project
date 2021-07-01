@@ -7,19 +7,14 @@
 
 (source (github psg-mit/probzelus-analysis-impl))
 (license Apache-2.0)
-(authors "Charles Yuan" "Louis Mandel")
+(authors  "Eric Atkinson"
+          "Guillaume Baudart"
+          "Michael Carbin"
+          "Louis Mandel"
+          "Charles Yuan")
 (maintainers "Louis Mandel")
 
 (package
  (name muf)
  (synopsis "The muF compiler")
- (description "A compiler for the muF language.")
- (depends
-  (muf-compiler-libs (= 0.1.0))))
-
-(package
- (name muf-compiler-libs)
- (synopsis "Internal muF compiler library")
- (description "Internal muF compiler library.")
- (depends
-  (dune (> 1.5))))
+ (description "Compiler, static analysis, and runtime for muF"))
