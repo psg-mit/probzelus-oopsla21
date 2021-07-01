@@ -35,7 +35,8 @@ let print_cmd ml_name =
     "ocamlfind ocamlc -linkpkg -package muf " ^ 
     ml_name ^ " main.ml -o main" 
   in
-  Format.printf "To generate the executable, run@.  %s@." cmd
+  ignore (Sys.command cmd);
+  Format.printf "Run: %s@." cmd
 
 let main file = 
   let name = Filename.chop_extension file in
