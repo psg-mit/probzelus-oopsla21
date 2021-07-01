@@ -8,23 +8,53 @@ First, import `Debian.ova` into your virtualization software. In our testing, we
 
 Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). Change into the `probzelus-analysis-impl-master` directory to access the main artifact files.
 
-In this directory, type `make clean` then `make` to build the artifact binary from scratch. The built artifact binary will then be placed at the path `_build/install/default/bin/muf`.
+In this directory, type `make install` to rebuild the artifact from scratch.
+You should now have the `mufc` compiler in your path.
+
+```
+$ mufc --help
+Options are:
+  --only-check        Only run the static analysis
+  --simulate <node>   Simulates the node <node> and generates a file <node>.ml
+  -help               Display this list of options
+  --help              Display this list of options
+```
 
 The `tests` directory contains a set of `.muf` programs corresponding to the benchmarks in the paper. Execute the artifact on each program by supplying it as an argument, for example:
 
 ```shell
-./analyzer.exe tests/outlier.muf
+$ cd tests
+$ mufc outlier.muf
+```
+Which will display the results of the static analysis, compile the code to OCaml and compile the OCaml code to build an executable that runs the program.
+
+```shell
+$ mufc outlier.muf 
+-- Analyzing outlier.muf
+  Checking node outlier:
+    m-consumed analysis: success
+    Unseparated paths analysis: success
+  Checking node main:
+    m-consumed analysis: failed
+    Unseparated paths analysis: success
+-- Generating outlier.ml
+-- Generating main.ml
+ocamlfind ocamlc -linkpkg -package muf outlier.ml main.ml -o outlier_main.exe
 ```
 
-which will display a message indicating the results of the static analysis on the program:
+You can now execute the program:
 
-```text
-Processing tests/outlier.muf
-Checking node outlier
-Checking node main
-m-consumed analysis failed
-Analysis complete
+```shell
+$ ./outlier_main.exe
+gaussian (0.990099, 0.990099)
+gaussian (0.996689, 0.665563)
+gaussian (0.998758, 0.624845)
+...
 ```
+
+Note that stream processors never stops. Use `^C` to stop the execution.
+
+You can also run `make tests` to compile all the examples.
 
 ## Step by Step Instructions
 
