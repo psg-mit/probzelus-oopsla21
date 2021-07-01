@@ -12,7 +12,7 @@
 (executable
  (name mufc)
  (modules mufc)
- (promote (until-clean) (into ..))
+ (promote (until-clean) (into ../..))
  (libraries compiler-libs.common mufcompilerlibs zelus.zlcompilerlibs))
 
 (install

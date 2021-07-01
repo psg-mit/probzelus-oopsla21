@@ -26,3 +26,8 @@ let parse parsing_fun lexing_fun source_name =
       let loc = (Lexing.lexeme_start lexbuf, Lexing.lexeme_end lexbuf) in
       close_in ic;
       syntax_error (source_name, loc)
+
+let simulation_node = ref "main"
+let set_simulation_node (n:string) = simulation_node := n
+let only_check = ref false
+let set_only_check () = only_check := true

@@ -37,7 +37,7 @@ let compile_file muf_list ml_name =
   close_out mlc
 
 let compile_simulator name node =
-  let mainc = open_out "main.ml" in
+  let mainc = open_out (node ^ ".ml") in
   let mainff = Format.formatter_of_out_channel mainc in
   Format.fprintf mainff
     "@[<v> open Muf @;@;\
@@ -51,26 +51,42 @@ let compile_simulator name node =
     (String.capitalize_ascii name) node;
   close_out mainc
   
-let print_cmd ml_name = 
+let print_cmd ml_name node = 
   let cmd = 
     "ocamlfind ocamlc -linkpkg -package muf " ^ 
-    ml_name ^ " main.ml -o main" 
+    ml_name ^ " " ^ node ^ ".ml -o " ^ node ^".exe"
   in
   Format.printf "%s@." cmd;
   ignore (Sys.command cmd)
 
-
 let main file = 
   let name = Filename.chop_extension file in
+  let node = !Misc.simulation_node in
   let ml_name = name ^ ".ml" in
   let muf_list = Misc.parse Parser.program (Lexer.token ()) file in
   Format.printf "-- Analyzing %s@." file;
   analyze_file muf_list;
-  Format.printf "-- Generating %s@." ml_name;
-  compile_file muf_list ml_name;
-  Format.printf "-- Generating main.ml@.";
-  compile_simulator name "main";
-  print_cmd ml_name
-  
+  if not !Misc.only_check then begin
+    Format.printf "-- Generating %s@." ml_name;
+    compile_file muf_list ml_name;
+    Format.printf "-- Generating %s.ml@." node;
+    compile_simulator name node;
+    print_cmd ml_name node
+  end
 
-let () = try Arg.parse [] main "" with Misc.Error -> exit 1
+
+let doc_simulation =
+  "<node> \t Simulates the node <node> and generates a file <node>.ml"
+let doc_only_check = "\t Only run the static analysis"
+
+
+let () = 
+  try 
+    Arg.parse 
+      (Arg.align [
+        "--only-check", Arg.Unit Misc.set_only_check, doc_only_check;
+        "--simulate", Arg.String Misc.set_simulation_node, doc_simulation;
+      ])
+      main 
+      "Options are:"
+  with Misc.Error -> exit 1
