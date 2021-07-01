@@ -1,8 +1,8 @@
 val kalman_helper = stream {
   init = const (0.);
-  step (_, x) =
+  step (x, ()) =
     let x' = gaussian (x, 1.) in
-    (x', x')
+    (x', sample (x'))
 }
 
 val kalman = stream {
@@ -10,7 +10,7 @@ val kalman = stream {
   step (kh, obs) =
     let (x, kh') = unfold (kh, ()) in
     let _ = observe (x, obs) in
-    (x, kh')
+    (sample (x), kh')
 }
 
 val main = stream {
