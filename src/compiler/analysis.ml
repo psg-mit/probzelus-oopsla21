@@ -516,7 +516,7 @@ let unseparated_paths n_iters e fctx mctx =
 
 let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
-let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
+let process_node n_iters e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
     (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
   let module E = Evaluator (Empty) in
   let (t_init, _), _ =
@@ -532,7 +532,7 @@ let process_node e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
   in
   let _ =
     try 
-      ignore (unseparated_paths 10 e_init.expr fctx mctx);
+      ignore (unseparated_paths n_iters e_init.expr fctx mctx);
       Printf.printf "    Unseparated paths analysis: success\n"
     with Infer -> Printf.printf "    Unseparated paths analysis: failed\n"
   in
