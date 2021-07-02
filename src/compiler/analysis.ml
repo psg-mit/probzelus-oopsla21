@@ -517,23 +517,23 @@ let unseparated_paths n_iters e fctx mctx =
 let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
 let process_node n_iters e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
-    (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream =
+    (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream * (bool * bool) =
   let module E = Evaluator (Empty) in
   let (t_init, _), _ =
     E.eval ()
       (fun _ _ _ _ _ _ -> true)
       ops (fctx, mctx, VarMap.empty) e_init.expr
   in
-  let _ =
+  let mcons =
     try 
       ignore (m_consumed e_init.expr fctx mctx);
-      Printf.printf "    m-consumed analysis: success\n"
-    with Infer -> Printf.printf "    m-consumed analysis: failed\n"
+      true
+    with Infer -> false
   in
-  let _ =
+  let unsep =
     try 
       ignore (unseparated_paths n_iters e_init.expr fctx mctx);
-      Printf.printf "    Unseparated paths analysis: success\n"
-    with Infer -> Printf.printf "    Unseparated paths analysis: failed\n"
+      true
+    with Infer -> false
   in
-  { t_state = t_init; p_state; p_in; e; fctx; mctx }
+  { t_state = t_init; p_state; p_in; e; fctx; mctx }, (mcons, unsep)

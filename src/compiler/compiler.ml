@@ -31,23 +31,31 @@ let analyze_file n_iters p =
   let module SMap = Map.Make (String) in
   let open Muf in
   List.fold_left
-    (fun (fctx, mctx) d ->
+    (fun (fctx, mctx, (mcons, unsep)) d ->
       match d.decl with
       | Dfun ({ name }, p, e) ->
-          (SMap.add name (Analysis.process_fn p e fctx mctx) fctx, mctx)
+          let rs = Analysis.process_fn p e fctx mctx in
+          (SMap.add name rs fctx, mctx, (mcons, unsep))
       | Dnode ({ name }, _, node) -> (
           let p, e = node.n_step in
           match p.patt with
           | Ptuple [ p_state; p_in ] ->
-              Printf.printf "  Checking node %s:\n" name;
+              let rs, (mcons', unsep') = 
+                Analysis.process_node 
+                  n_iters node.n_init p_state p_in e fctx mctx
+              in
               ( fctx,
-                SMap.add name
-                  (Analysis.process_node n_iters node.n_init p_state p_in e fctx mctx)
-                  mctx )
+                SMap.add name rs mctx, (mcons && mcons', unsep && unsep'))
           | _ -> failwith "Stream definition lacking step (state, input).")
-      | _ -> (fctx, mctx))
-    (SMap.empty, SMap.empty) p
-  |> ignore
+      | _ -> (fctx, mctx, (mcons, unsep)))
+    (SMap.empty, SMap.empty, (true, true)) p
+  |> (fun (_, _, (mcons, unsep)) -> 
+        if mcons 
+        then Format.printf "     ✓ : m-consumed analysis success@."
+        else Format.printf "     ✗ : m-consumed analysis failure@.";
+        if unsep 
+        then Format.printf "     ✓ : Unseparated paths analysis success@."
+        else Format.printf "     ✗ : Unseparated paths analysis failure@.")
 
 let compile_file muf_list name =
   let mlc = open_out (name ^ ".ml") in
