@@ -14,6 +14,9 @@ install:
 tests:
 	make -C tests
 
+bench:
+	make -C tests bench
+
 clean:
 	rm -rf _build
 	make -C tests clean
