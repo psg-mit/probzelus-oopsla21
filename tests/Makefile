@@ -26,7 +26,7 @@ bench: \
 	 gaussian_gaussian.check \
 	 outlier.check \
 	 mtt.check \
-	 slam.check
+	 slam_array.check
 
 
 %.check: %.muf

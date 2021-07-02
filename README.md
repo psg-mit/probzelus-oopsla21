@@ -73,7 +73,7 @@ To execute the benchmarks found in the paper, run the analysis on the following 
 | Gaussian-Gaussian    | gaussian_gaussian.muf |
 | Outlier              | outlier.muf           |
 | MTT                  | mtt.muf               |
-| SLAM                 | slam.muf              |
+| SLAM                 | slam_array.muf              |
 ```
 
 The remaining benchmarks in the `tests/` directory can also be executed but are not described in the paper.
