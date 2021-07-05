@@ -18,7 +18,7 @@ bench:
 	make -C tests bench
 
 clean:
-	rm -rf _build
+	dune clean
 	make -C tests clean
 
 cleanall: clean
