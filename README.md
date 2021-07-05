@@ -76,7 +76,7 @@ The implementation of `lqr` makes no difference for the analysis but requires mu
 Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build delayed sampling expression described in Section 4.1 using special constructs such as `const` (constants), and `pair` (tuple).
 Concrete values can be obtained with the `eval` function (e.g., for the condition of a `if` statement).
 
-- `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.))` (see coin_outlier.muf).
+- `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.5))` (see coin_outlier.muf).
 
 - `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf).  
 As mentioned in Section 4.2, distributions can only depend on a unique random variable. 
