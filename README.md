@@ -62,6 +62,8 @@ Option `--only-check` only runs the analysis (without compilation).
 Run `make bench` to run the analysis on all the benchmarks presented in the paper (see below).
 
 
+Note that the following programs are not able to compile, and must be passed to `mufc` with the `--only-check` option: `mtt.muf`, `robot.muf`, `slam_array.muf`, `slam_tuple.muf`, and `slam.muf`. This is expected behavior. The `mtt.muf` example requires a list library that is not yet implemented in the runtime; the `robot.muf` example requires a stream of observation inputs that each depend on program outputs, and we have not yet ported the code to generate these inputs; and the `slam` examples require array libraries that are not yet linked to the runtime. Note that the missing dependencies do not impact this artifact's support of the claims made the paper, as the analysis nevertheless runs on all of these examples.
+
 ## Relationship with the paper
 
 ### Section 2
@@ -69,7 +71,6 @@ Run `make bench` to run the analysis on all the benchmarks presented in the pape
 The muF program of Figure 1 is available in `robot.muf`.
 The stream function `controller` uses a `lqr` function that acts as a place-holder for a Linear–quadratic regulator.
 The implementation of `lqr` makes no difference for the analysis but requires multidimensional Gaussians that are not yet supported by the runtime.
-
 
 ### Section 4
 
@@ -113,13 +114,6 @@ To execute an example, you need to first compile it, e.g.,:
 $ mufc kalman_normal.muf
 $ ./kalman_normal_main.exe
 ```
-
-XXX TODO XXX
-:warning: Three examples are not runnable with the current version of the runtime that relies on ProbZelus.
-
-- robot and slam: these benchmarks require inference-in-the-loop, which means we need a way to generate the observations that are being sent to them given the actions that they output. We currently do not have a muF-compatible version of the observation generation functions for these examples
-
-- mtt : As a simplification, we used one-dimensional Gaussians whereas the original example had multidimensional Gaussians. This does not affect the analysis results, but does mean we cannot interface with ProbZelus runtime. Also, the list encoding for the analysis uses a different interface on the shuffle function. The analysis treats this as a function given an explicit shuffle ordering, whereas the original ProbZelus interface was a distribution over output lists given an input lists. Due to these interface mismatches, this benchmark cannot be run with the original ProbZelus runtime.
 
 ## Step by Step Instructions
 
