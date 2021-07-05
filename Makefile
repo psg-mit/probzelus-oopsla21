@@ -6,7 +6,7 @@ build:
 	dune build
 
 init:
-	opam pin -k path .
+	opam pin -y -k path .
 
 install:
 	opam reinstall -y muf

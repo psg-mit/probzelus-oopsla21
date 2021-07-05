@@ -17,4 +17,5 @@
 (package
  (name muf)
  (synopsis "The muF compiler")
- (description "Compiler, static analysis, and runtime for muF"))
+ (description "Compiler, static analysis, and runtime for muF")
+ (depends probzelus))

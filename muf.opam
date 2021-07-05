@@ -16,6 +16,7 @@ homepage: "https://github.com/psg-mit/probzelus-analysis-impl"
 bug-reports: "https://github.com/psg-mit/probzelus-analysis-impl/issues"
 depends: [
   "dune" {>= "2.7"}
+  "probzelus"
   "odoc" {with-doc}
 ]
 build: [
