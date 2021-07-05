@@ -51,11 +51,11 @@ let analyze_file n_iters p =
     (SMap.empty, SMap.empty, (true, true)) p
   |> (fun (_, _, (mcons, unsep)) -> 
         if mcons 
-        then Format.printf "     ✓ m-consumed analysis success@."
-        else Format.printf "     ✗ m-consumed analysis failure@.";
+        then Format.printf "     o m-consumed analysis success@."
+        else Format.printf "     x m-consumed analysis failure@.";
         if unsep 
-        then Format.printf "     ✓ Unseparated paths analysis success@."
-        else Format.printf "     ✗ Unseparated paths analysis failure@.")
+        then Format.printf "     o Unseparated paths analysis success@."
+        else Format.printf "     x Unseparated paths analysis failure@.")
 
 let compile_file muf_list name =
   let mlc = open_out (name ^ ".ml") in

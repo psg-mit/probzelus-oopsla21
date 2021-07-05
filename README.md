@@ -37,8 +37,8 @@ Which
 ```shell
 $ mufc outlier.muf 
 -- Analyzing outlier.muf
-     ✗ m-consumed analysis failure
-     ✓ Unseparated paths analysis success
+     x m-consumed analysis failure
+     o Unseparated paths analysis success
 -- Generating outlier.ml
 -- Generating main.ml
 ocamlfind ocamlc -linkpkg -package muf outlier.ml main.ml -o outlier_main.exe
@@ -93,15 +93,15 @@ To test the benchmarks presented in Table 1, run the analysis on the following f
 
 | Paper Benchmark      | Filename              |  m-consumed | Unseparated paths |
 | -------------------- | --------------------- | ----------- | ----------------- |
-| Kalman               | kalman_normal.muf     | ✓           | ✓                 |
-| Kalman Hold-First    | kalman_first.muf      | ✓           | ✗                 |
-| Gaussian Random Walk | kalman_generative.muf | ✗           | ✓                 |
-| Robot                | robot.muf             | ✓           | ✓                 |
-| Coin                 | coin.muf              | ✓           | ✓                 |
-| Gaussian-Gaussian    | gaussian_gaussian.muf | ✓           | ✓                 |
-| Outlier              | outlier.muf           | ✗           | ✓                 |
-| MTT                  | mtt.muf               | ✗           | ✓                 |
-| SLAM                 | slam_array.muf        | ✗           | ✓                 |
+| Kalman               | kalman_normal.muf     | o           | o                 |
+| Kalman Hold-First    | kalman_first.muf      | o           | x                 |
+| Gaussian Random Walk | kalman_generative.muf | x           | o                 |
+| Robot                | robot.muf             | o           | o                 |
+| Coin                 | coin.muf              | o           | o                 |
+| Gaussian-Gaussian    | gaussian_gaussian.muf | o           | o                 |
+| Outlier              | outlier.muf           | x           | o                 |
+| MTT                  | mtt.muf               | x           | o                 |
+| SLAM                 | slam_array.muf        | x           | o                 |
 
 The remaining benchmarks in the `tests/` directory are valid programs but are not described in the paper.
 
