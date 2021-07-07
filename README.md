@@ -6,7 +6,7 @@ This artifact is being submitted to support the paper "Statically Bounded-Memory
 
 First, import `Debian.ova` into your virtualization software. In our testing, we used [VirtualBox](https://www.virtualbox.org) 6.1.22 on macOS Big Sur. This VM is packaged in the Open Virtual Appliance format and can be imported into VirtualBox through `File -> Import Appliance`. The VM contains an installation of Debian Linux and has no particular hardware or network requirements.
 
-Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). Change into the `probzelus-analysis-impl-master` directory to access the main artifact files.
+Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). 
 
 The artifact is in the `artifact` directory.
 The `mufc` compiler is already installed.
@@ -30,9 +30,9 @@ $ mufc outlier.muf
 ```
 Which 
 1. Displays the results of the static analysis, 
-2. compiles the muF program to OCaml (`outlier.ml`) 
-3. generates a simple simulation OCaml program (`main.ml`)
-4. builds an executable that runs the program (`outlier_main.exe`)
+2. Compiles the muF program to OCaml (`outlier.ml`) 
+3. Generates a simple simulation OCaml program (`main.ml`)
+4. Builds an executable that runs the program (`outlier_main.exe`)
 
 ```shell
 $ mufc outlier.muf 
@@ -90,22 +90,22 @@ These discrepancies could be addressed with a simple compilation pass that we le
 
 To test the benchmarks presented in Table 1, run the analysis on the following files, or simply run `make bench`.
 
-| Paper Benchmark      | Filename              |  m-consumed | Unseparated paths |
-| -------------------- | --------------------- | ----------- | ----------------- |
-| Kalman               | kalman_normal.muf     | o           | o                 |
-| Kalman Hold-First    | kalman_first.muf      | o           | x                 |
-| Gaussian Random Walk | kalman_generative.muf | x           | o                 |
-| Robot                | robot.muf             | o           | o                 |
-| Coin                 | coin.muf              | o           | o                 |
-| Gaussian-Gaussian    | gaussian_gaussian.muf | o           | o                 |
-| Outlier              | outlier.muf           | x           | o                 |
-| MTT                  | mtt.muf               | x           | o                 |
-| SLAM                 | slam_array.muf        | x           | o                 |
+| Paper Benchmark      | Filename                |  m-consumed | Unseparated paths |
+| -------------------- | ----------------------- | ----------- | ----------------- |
+| Kalman               | `kalman_normal.muf`     | o           | o                 |
+| Kalman Hold-First    | `kalman_first.muf`      | o           | x                 |
+| Gaussian Random Walk | `kalman_generative.muf` | x           | o                 |
+| Robot                | `robot.muf`             | o           | o                 |
+| Coin                 | `coin.muf`              | o           | o                 |
+| Gaussian-Gaussian    | `gaussian_gaussian.muf` | o           | o                 |
+| Outlier              | `outlier.muf`           | x           | o                 |
+| MTT                  | `mtt.muf`               | x           | o                 |
+| SLAM                 | `slam_array.muf`        | x           | o                 |
 
 The remaining benchmarks in the `tests/` directory are valid programs but are not described in the paper.
 
 For each benchmark, the compiler returns the outcome of two analyses: m-consumed and unseparated paths analysis.
-For this experiment, the `--only-check` option is set to true. The compiler won't try to generate an executable.
+For this experiment, the `--only-check` option is set to true. The compiler will not try to generate an executable.
 To execute an example, you need to first compile it, e.g.,:
 
 ```
