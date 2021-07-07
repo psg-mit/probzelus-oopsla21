@@ -22,3 +22,8 @@ val robot = stream {
     let () = print_newline (()) in
     (u, (c', k'))
 }
+
+val main = stream {
+  init = init (robot);
+  step (robot, ()) = unfold (robot, (1., 1.))
+}
