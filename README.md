@@ -81,7 +81,7 @@ Concrete values can be obtained from symbolic values with the `eval` function (e
 
 - `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf). Note that the `gaussian` construct uses a symbolic value for the mean but a concrete value for the variance.
 
-- If `x` is a random variable (defined with `x = sample ...`), `if x then ...` should thus be written `if eval (x) then ...` (see `coin_outlier.muf`).
+- If `x` is a random variable (defined with `x = sample ...`), `if x then ...` should be written `if eval (x) then ...` (see `coin_outlier.muf`).
 
 The muF compiler is a prototype focusing on the static analysis presented in the paper.
 These discrepancies could be addressed with a simple compilation pass that we leave for future work.
