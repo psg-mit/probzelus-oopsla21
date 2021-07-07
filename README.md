@@ -74,12 +74,12 @@ The implementation of `lqr` makes no difference for the analysis but requires ma
 
 ### Section 4
 
-Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build delayed sampling expression described in Section 4.1 using special constructs such as `const` (constants), and `pair` (tuple).
-Concrete values can be obtained with the `eval` function (e.g., for the condition of a `if` statement).
+Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term values as described in Section 4.1 using special constructs such as `const` (constants), and `pair` (tuple).
+Concrete values can be obtained from symbolic values with the `eval` function (e.g., for the condition of a `if` statement).
 
 - `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.5))` (see coin_outlier.muf).
 
-- `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf).  
+- `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf). Note that the `gaussian` construct uses a symbolic value for the mean but a concrete value for the variance.
 
 - If `x` is a random variable (defined with `x = sample ...`), `if x then ...` should thus be written `if eval (x) then ...` (see `coin_outlier.muf`).
 
@@ -157,7 +157,7 @@ Furthermore, these core constructs may also be used inside the initial value:
 
 There are a number of built-in distributions and operators such as `gaussian`. Please examine the supplied programs to see examples of these built-in operators.
 
-As mentioned in Section _"Relationship with the paper, Section 4"_ (see above), distributions parameters can be delayed sampling expressions that must be built using `const` (constant) and `pair` (tuple).
+As mentioned in Section _"Relationship with the paper, Section 4"_ (see above), distribution parameters can be symbolic values that must be built using `const` (constant) and `pair` (tuple).
 Evaluation of a delayed sampling expression can be forced with the function `eval` to obtain a concrete value.
 
 ### Claims Supported by Artifact
