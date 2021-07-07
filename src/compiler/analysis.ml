@@ -452,10 +452,11 @@ let ops =
     "const";
     "pair";
     "array";
+    "lst";
     "ite";
     "add";
     "add_int";
-    "sub";
+    "sub_int";
     "mult";
     "eval";
     "get";
@@ -465,6 +466,8 @@ let ops =
     "lt";
     "print_any_t";
     "print_newline";
+    "of_distribution";
+    "float_of_int";
   ]
 
 let initial_ctx t_init p_state p_in =

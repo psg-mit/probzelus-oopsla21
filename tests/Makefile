@@ -8,7 +8,7 @@ all: \
 	kalman_helper_main.exe \
 	kalman_multiple_ts_main.exe \
 	kalman_normal_main.exe \
-	mtt.check \
+	mtt_main.exe \
 	outlier_main.exe \
 	robot.check \
 	slam_array_main.exe \
