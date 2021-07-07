@@ -11,9 +11,9 @@ all: \
 	mtt.check \
 	outlier_main.exe \
 	robot.check \
-	slam_array.check \
-	slam_tuple.check \
-	slam.check \
+	slam_array_main.exe \
+	slam_tuple_main.exe \
+	slam_main.exe \
 	tuple_main.exe \
 	up_multiple_its_main.exe
 

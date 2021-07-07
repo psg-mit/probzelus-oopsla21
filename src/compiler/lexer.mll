@@ -25,7 +25,7 @@
           ("float", FLOATT);
           ("dist", DIST);
           ("unit", UNIT);
-          ("array", ARRAY);
+          ("arr", ARRAY);
           ("list", LIST);
           ("init", INIT);
           ("unfold", UNFOLD);

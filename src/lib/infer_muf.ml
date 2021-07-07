@@ -23,3 +23,14 @@ let infer n f =
   Infer_ds_streaming.infer n f
 
 let ite (i, t, e)  = Infer_ds_streaming.ite i t e
+
+let add_int (x, y) = x + y
+
+module Array = struct
+  let empty = Array.make 100 (Infer_ds_streaming.const false)
+
+  let init (n, f) = Array.init n f 
+
+  let get (a, x) = Array.get a x
+
+end

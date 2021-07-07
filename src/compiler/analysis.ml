@@ -451,8 +451,10 @@ let ops =
     "infer_init";
     "const";
     "pair";
+    "array";
     "ite";
     "add";
+    "add_int";
     "sub";
     "mult";
     "eval";
