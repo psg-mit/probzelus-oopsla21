@@ -1,6 +1,6 @@
 # Artifact README
 
-This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams" by Atkinson, Baudart, Mandel, Yuan, and Carbin. The artifact contains, in addition to this document, one file `Debian.ova` which is a virtual machine containing source code, pre-built binaries, and benchmark programs.
+This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams". The artifact contains, in addition to this document, the file `Debian.ova` which is a virtual machine containing source code, pre-built binaries, and benchmark programs.
 
 ## Getting Started
 
