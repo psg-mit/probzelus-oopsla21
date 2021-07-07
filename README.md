@@ -22,17 +22,17 @@ The muF Compiler. Options are:
   --help              Display this list of options
 ```
 
-The `tests` directory contains a set of `.muf` programs corresponding to the benchmarks in the paper. Execute the artifact on each program by supplying it as an argument, for example:
+The `tests` directory contains a set of `.muf` programs corresponding to the benchmarks in the paper. You may execute the compiler on each program by supplying it as an argument, for example:
 
 ```shell
 $ cd tests
 $ mufc outlier.muf
 ```
 Which 
-1. Display the results of the static analysis, 
-2. compile the muF program to OCaml (`outlier.ml`) 
-3. generate a simple simulation OCaml program (`main.ml`)
-4. build an executable that runs the program (`outlier_main.exe`)
+1. Displays the results of the static analysis, 
+2. compiles the muF program to OCaml (`outlier.ml`) 
+3. generates a simple simulation OCaml program (`main.ml`)
+4. builds an executable that runs the program (`outlier_main.exe`)
 
 ```shell
 $ mufc outlier.muf 
