@@ -54,12 +54,12 @@ gaussian (0.998758, 0.624845)
 ...
 ```
 
-:warning: Note that stream processors never stops. Use `^C` to stop the execution.
+Note that stream processors never stop. Use `^C` to stop the execution.
 
 You can also run `make tests` from the root of the project to compile all the examples.
 
-Option `--only-check` only runs the analysis (without compilation).
-Run `make bench` to run the analysis on all the benchmarks presented in the paper (see below).
+The option `--only-check` only runs the analysis (without compilation).
+Run `make bench` to run the analysis on all the benchmarks presented in the paper (see the Step by Step Instructions below).
 
 
 Note that the following programs are not able to compile, and must be passed to `mufc` with the `--only-check` option: `mtt.muf`, `robot.muf`, `slam_array.muf`, `slam_tuple.muf`, and `slam.muf`. This is expected behavior. The `mtt.muf` example requires a list library that is not yet implemented in the runtime; the `robot.muf` example requires a stream of observation inputs that each depend on program outputs, and we have not yet ported the code to generate these inputs; and the `slam` examples require array libraries that are not yet linked to the runtime. Note that the missing dependencies do not impact this artifact's support of the claims made the paper, as the analysis nevertheless runs on all of these examples.
