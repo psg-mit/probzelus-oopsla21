@@ -70,7 +70,7 @@ Note that the following programs are not able to compile, and must be passed to 
 
 The muF program of Figure 1 is available in `robot.muf`.
 The stream function `controller` uses a `lqr` function that acts as a place-holder for a Linear–quadratic regulator.
-The implementation of `lqr` makes no difference for the analysis but requires matrix operations that are not yet supported.
+The analysis does not depend on the implementation of `lqr`, but the implementation requires matrix operations that are not yet supported.
 
 ### Section 4
 
