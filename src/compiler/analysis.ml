@@ -452,7 +452,7 @@ let ops =
     "const";
     "pair";
     "ite";
-    "plus";
+    "add";
     "sub";
     "mult";
     "eval";
