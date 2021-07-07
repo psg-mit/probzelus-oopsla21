@@ -21,3 +21,5 @@ let infer n f =
   in
   let f = Cnode { alloc; reset; copy; step; } in
   Infer_ds_streaming.infer n f
+
+let ite (i, t, e)  = Infer_ds_streaming.ite i t e
