@@ -80,8 +80,6 @@ Concrete values can be obtained with the `eval` function (e.g., for the conditio
 - `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.5))` (see coin_outlier.muf).
 
 - `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf).  
-As mentioned in Section 4.2, distributions can only depend on a unique random variable. 
-Hence, for Gaussian distributions, only the mean (first parameter) can be a delayed sampling expression. 
 
 - If `x` is a random variable (defined with `x = sample ...`), `if x then ...` should thus be written `if eval (x) then ...` (see `coin_outlier.muf`).
 
