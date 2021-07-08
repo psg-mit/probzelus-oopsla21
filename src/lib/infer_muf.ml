@@ -31,7 +31,7 @@ let add_int (x, y) = x + y
 let sub_int (x, y) = x - y
 
 module Array = struct
-  let empty = Array.make 100 (Infer_ds_streaming.const false)
+  let empty = [||]
 
   let init (n, f) = Array.init n f 
 
