@@ -1,4 +1,5 @@
 open Format
+
 exception Error
 
 let output_loc ff (file, (p1, p2)) =
@@ -40,79 +41,74 @@ let analyze_file n_iters p =
           let p, e = node.n_step in
           match p.patt with
           | Ptuple [ p_state; p_in ] ->
-              let rs, (mcons', unsep') = 
-                Analysis.process_node 
-                  n_iters node.n_init p_state p_in e fctx mctx
+              let rs, (mcons', unsep') =
+                Analysis.process_node n_iters node.n_init p_state p_in e fctx
+                  mctx
               in
-              ( fctx,
-                SMap.add name rs mctx, (mcons && mcons', unsep && unsep'))
+              (fctx, SMap.add name rs mctx, (mcons && mcons', unsep && unsep'))
           | _ -> failwith "Stream definition lacking step (state, input).")
       | _ -> (fctx, mctx, (mcons, unsep)))
-    (SMap.empty, SMap.empty, (true, true)) p
-  |> (fun (_, _, (mcons, unsep)) -> 
-        if mcons 
-        then Format.printf "     o m-consumed analysis success@."
-        else Format.printf "     x m-consumed analysis failure@.";
-        if unsep 
-        then Format.printf "     o Unseparated paths analysis success@."
-        else Format.printf "     x Unseparated paths analysis failure@.")
+    (SMap.empty, SMap.empty, (true, true))
+    p
+  |> fun (_, _, (mcons, unsep)) ->
+  if mcons then Format.printf "     o m-consumed analysis success@."
+  else Format.printf "     x m-consumed analysis failure@.";
+  if unsep then Format.printf "     o Unseparated paths analysis success@."
+  else Format.printf "     x Unseparated paths analysis failure@."
 
 let compile_file muf_list name =
   let mlc = open_out (name ^ ".ml") in
   let mlff = Format.formatter_of_out_channel mlc in
   try
-    let ml_list = List.map Muf_gencode.compile_program [muf_list] in
-    Format.fprintf mlff "%s@.%s@.%s@.%s@.%s@.@.%a@."
-      "open Probzelus"
-      "open Distribution"
-      "open Muf"
-      "open Infer_ds_streaming"
-      "open Infer_muf"
-      (pp_print_list ~pp_sep:pp_force_newline Pprintast.structure) ml_list;
-  with Zmisc.Error -> close_out mlc; raise Error
-  
+    let ml_list = List.map Muf_gencode.compile_program [ muf_list ] in
+    Format.fprintf mlff "%s@.%s@.%s@.%s@.%s@.@.%a@." "open Probzelus"
+      "open Distribution" "open Muf" "open Infer_ds_streaming" "open Infer_muf"
+      (pp_print_list ~pp_sep:pp_force_newline Pprintast.structure)
+      ml_list
+  with Zmisc.Error ->
+    close_out mlc;
+    raise Error
 
 let compile_simulator name node =
   let mainc = open_out (node ^ ".ml") in
   let mainff = Format.formatter_of_out_channel mainc in
   Format.fprintf mainff
-    "@[<v> open Muf @;@;\
+    "@[<v> open Muf @;\
+     @;\
      @[(* simulation (discrete) function *)@]@;\
      @[<v 2>@[let main =@]@;\
      @[let mem = ref (Muflib.init %s.%s) in@]@;\
-     @[(fun x -> let _, s = Muflib.step !mem x in mem := s)@]@]@];;@.\
-     @[<v>(* (discrete) simulation loop *)@;\
-         while true do main () done;@;\
-         exit(1);;@]@."
-    (String.capitalize_ascii name) node;
+     @[(fun x -> let _, s = Muflib.step !mem x in mem := s)@]@]@];;@.@[<v>(* \
+     (discrete) simulation loop *)@;\
+     while true do main () done;@;\
+     exit(1);;@]@."
+    (String.capitalize_ascii name)
+    node;
   close_out mainc
-  
-let print_cmd name node = 
-  let cmd = 
-    "ocamlfind ocamlc -linkpkg -package muf " ^ 
-    name ^ ".ml " ^ node ^ ".ml " 
+
+let print_cmd name node =
+  let cmd =
+    "ocamlfind ocamlc -linkpkg -package muf " ^ name ^ ".ml " ^ node ^ ".ml "
     ^ "-o " ^ name ^ "_" ^ node ^ ".exe"
   in
   Format.printf "%s@." cmd;
-  match Sys.command cmd with
-  | 0 -> ()
-  | _ -> raise Error
-
+  match Sys.command cmd with 0 -> () | _ -> raise Error
 
 let only_check = ref false
+
 let simulation_node = ref "main"
+
 let up_bound = ref 10
 
-let compile file = 
+let compile file =
   let name = Filename.chop_extension file in
   let node = !simulation_node in
   let muf_list = parse Parser.program (Lexer.token ()) file in
   Format.printf "-- Analyzing %s@." file;
   analyze_file !up_bound muf_list;
-  if not !only_check then begin
+  if not !only_check then (
     Format.printf "-- Generating %s.ml@." name;
     compile_file muf_list name;
     Format.printf "-- Generating %s.ml@." node;
     compile_simulator name node;
-    print_cmd name node
-  end
+    print_cmd name node)

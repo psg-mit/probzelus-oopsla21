@@ -272,8 +272,8 @@ module Evaluator (A : Analysis) = struct
                   let state = A.value (Rep.get arg, state) in
                   let (r, o2), state = eval ctx state l.expr in
                   match r with
-                  | Rmaybe r -> 
-                      let (r, o) = Rep.join (arg, o1) (r, o2) in 
+                  | Rmaybe r ->
+                      let r, o = Rep.join (arg, o1) (r, o2) in
                       ((Rep.Rmaybe r, o), state)
                   | _ -> assert false)
               | _ -> failwith "List.shuffle incorrect arguments")
@@ -522,7 +522,8 @@ let unseparated_paths n_iters e fctx mctx =
 let process_fn p e fctx mctx = Rep.Fn (p, e, fctx, mctx)
 
 let process_node n_iters e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
-    (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream * (bool * bool) =
+    (mctx : ('p, 'e) Rep.stream VarMap.t) : ('p, 'e) Rep.stream * (bool * bool)
+    =
   let module E = Evaluator (Empty) in
   let (t_init, _), _ =
     E.eval ()
@@ -530,15 +531,15 @@ let process_node n_iters e_init p_state p_in e (fctx : ('p, 'e) Rep.fn VarMap.t)
       ops (fctx, mctx, VarMap.empty) e_init.expr
   in
   let mcons =
-    try 
+    try
       ignore (m_consumed e_init.expr fctx mctx);
       true
     with Infer -> false
   in
   let unsep =
-    try 
+    try
       ignore (unseparated_paths n_iters e_init.expr fctx mctx);
       true
     with Infer -> false
   in
-  { t_state = t_init; p_state; p_in; e; fctx; mctx }, (mcons, unsep)
+  ({ t_state = t_init; p_state; p_in; e; fctx; mctx }, (mcons, unsep))
