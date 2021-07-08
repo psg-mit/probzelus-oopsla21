@@ -1,18 +1,31 @@
 # Artifact README
 
-This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams". The artifact contains, in addition to this document, the file `Debian.ova` which is a virtual machine containing source code, pre-built binaries, and benchmark programs.
+This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams". 
+
+This artifact contains:
+- `README.md` this document,
+- `muf-oopsla2021.ova` a virtual machine containing source code, pre-built binaries, and benchmark programs,
+- The source code of the compiler and runtime (`/src`) and the tests (`/tests`).
+
+### Claims Supported by Artifact
+
+The artifact supports all claims in the Evaluation section of the paper. 
+In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties.
+The implementation of the type system presented in the paper is available in the file `src/compiler/analysis.ml`.
+In addition, all the examples can be compiled and run with delayed sampling.
+
 
 ## Getting Started
 
-First, import `Debian.ova` into your virtualization software. In our testing, we used [VirtualBox](https://www.virtualbox.org) 6.1.22 on macOS Big Sur. This VM is packaged in the Open Virtual Appliance format and can be imported into VirtualBox through `File -> Import Appliance`. The VM contains an installation of Debian Linux and has no particular hardware or network requirements.
+First, import `muf-oopsla2021.ova` into your virtualization software. In our testing, we used [VirtualBox](https://www.virtualbox.org) 6.1.22 on macOS Big Sur. This VM is packaged in the Open Virtual Appliance format and can be imported into VirtualBox through `File -> Import Appliance`. The VM contains an installation of Debian Linux and has no particular hardware or network requirements.
 
 Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). 
 
-The artifact is in the `artifact` directory.
+The artifact is in the `oopsla2021-artifact` directory.
 The `mufc` compiler is already installed.
 
 ```
-$ cd artifact
+$ cd oopsla2021-artifact
 $ mufc --help
 The muF Compiler. Options are:
   --only-check        Only run the static analysis (default false)
@@ -61,9 +74,6 @@ You can also run `make tests` from the root of the project to compile all the ex
 The option `--only-check` only runs the analysis (without compilation).
 Run `make bench` to run the analysis on all the benchmarks presented in the paper (see the "Relationship with the paper" section below).
 
-
-Note that the following programs are not able to compile, and must be passed to `mufc` with the `--only-check` option: `mtt.muf`, `robot.muf`, `slam_array.muf`, `slam_tuple.muf`, and `slam.muf`. This is expected behavior. The `mtt.muf` example requires a list library that is not yet implemented in the runtime; the `robot.muf` example requires a stream of observation inputs that each depend on program outputs, and we have not yet ported the code to generate these inputs; and the `slam` examples require array libraries that are not yet linked to the runtime. Note that the missing dependencies do not impact this artifact's support of the claims made the paper, as the analysis nevertheless runs on all of these examples.
-
 ## Relationship with the paper
 
 ### Section 2
@@ -74,14 +84,40 @@ The analysis does not depend on the implementation of `lqr`, but the implementat
 
 ### Section 4
 
-Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term values as described in Section 4.1 using special constructs such as `const` (constants), and `pair` (tuple).
-Concrete values can be obtained from symbolic values with the `eval` function (e.g., for the condition of a `if` statement).
+Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values as described in Section 4.1 using special constructs using the following API:
 
+```ocaml
+val const : 'a -> 'a expr
+val add : float expr * float expr -> float expr
+val mult : float expr * float expr -> float expr
+val app : ('a -> 'b) expr * 'a expr -> 'b expr
+val pair : 'a expr * 'b expr -> ('a * 'b) expr
+val array : 'a expr array -> 'a array expr
+val lst : 'a expr list -> 'a list expr
+val ite : bool expr -> 'a expr -> 'a expr -> 'a expr
+
+val eval : 'a expr -> 'a
+
+val sample : 'a distribution -> 'a expr
+val observe : 'a distribution * 'a -> unit
+```
+
+Concrete values can be obtained from symbolic values with the `eval` function (e.g., for the condition of a `if` statement), and `sample` always returns a `'a expr`.
+
+To perform symbolic computations, the delayed sampling runtime requires some distribution parameters to be of type `'a expr` :
+
+```ocaml
+val gaussian : float expr * float -> float ds_distribution
+val beta : float * float -> float ds_distribution
+val bernoulli : float expr -> bool ds_distribution
+```
+
+Examples:
 - `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.5))` (see coin_outlier.muf).
 
 - `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf). Note that the `gaussian` construct uses a symbolic value for the mean but a concrete value for the variance.
 
-- If `x` is a random variable (defined with `x = sample ...`), `if x then ...` should be written `if eval (x) then ...` (see `coin_outlier.muf`).
+- If `x = sample ...` then `if x then ...` should be written `if eval (x) then ...` (see `coin_outlier.muf`).
 
 The muF compiler is a prototype focusing on the static analysis presented in the paper.
 These discrepancies could be addressed with a simple compilation pass that we leave for future work.
@@ -118,7 +154,7 @@ $ ./kalman_normal_main.exe
 ### Installation 
 
 The muF runtime depends on [ProbZelus](https://github.com/ibm/probzelus).
-Once ProbZelus is installed, in the `artifact` directory, type `make init` to install the artifact from scratch.
+Once ProbZelus is installed, in the toplevel directory (containing teh `Makefile` and `muf.opam`), type `make init` to install the artifact from scratch.
 
 You should now have the `mufc` compiler in your path.
 Run the following command to test your installation:
@@ -157,10 +193,39 @@ Furthermore, these core constructs may also be used inside the initial value:
 
 There are a number of built-in distributions and operators such as `gaussian`. Please examine the supplied programs to see examples of these built-in operators.
 
-As mentioned in Section _"Relationship with the paper, Section 4"_ (see above), distribution parameters can be symbolic values that must be built using `const` (constant) and `pair` (tuple).
-Evaluation of a delayed sampling expression can be forced with the function `eval` to obtain a concrete value.
+Finally, as mentioned in Section _"Relationship with the paper, Section 4"_, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values.
 
-### Claims Supported by Artifact
+The full API is the following:
 
-The artifact supports all claims in the Evaluation section of the paper. In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties.
-The implementation of the type system presented in the paper is available in the file `src/compiler/analysis.ml`.
+```ocaml
+type 'a expr
+type 'a distribution
+
+type ('s, 'i, 'o) muf_node =
+    { init : 's;
+      step : ('s * 'i -> 'o * 's); }
+
+type ('s, 'i, 'o) instance =
+    { state : 's;
+      node : ('s, 'i, 'o) muf_node; }
+
+val init : unit -> ('s, 'i, 'o) muf_node -> ('s, 'i, 'o) instance
+
+val infer : int -> ('s, 'i, 'o) muf_node -> ('s, 'i, 'o distribution) node
+
+val unfold : ('s, 'i, 'o) instance -> 'i -> 'o * ('s, 'i, 'o) instance
+
+val const : 'a -> 'a expr
+val add : float expr * float expr -> float expr
+val mult : float expr * float expr -> float expr
+val app : ('a -> 'b) expr * 'a expr -> 'b expr
+val pair : 'a expr * 'b expr -> ('a * 'b) expr
+val array : 'a expr array -> 'a array expr
+val lst : 'a expr list -> 'a list expr
+val ite : bool expr -> 'a expr -> 'a expr -> 'a expr
+
+val eval : 'a expr -> 'a
+
+val sample : 'a distribution -> 'a expr
+val observe : 'a distribution * 'a -> unit
+```
