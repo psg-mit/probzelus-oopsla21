@@ -209,11 +209,11 @@ type ('s, 'i, 'o) instance =
     { state : 's;
       node : ('s, 'i, 'o) muf_node; }
 
-val init : unit -> ('s, 'i, 'o) muf_node -> ('s, 'i, 'o) instance
+val init : ('s, 'i, 'o) muf_node -> ('s, 'i, 'o) instance
 
-val infer : int -> ('s, 'i, 'o) muf_node -> ('s, 'i, 'o distribution) node
+val infer : int * ('s, 'i, 'o) muf_node -> ('s, 'i, 'o distribution) instance
 
-val unfold : ('s, 'i, 'o) instance -> 'i -> 'o * ('s, 'i, 'o) instance
+val unfold : ('s, 'i, 'o) instance * 'i -> 'o * ('s, 'i, 'o) instance
 
 val const : 'a -> 'a expr
 val add : float expr * float expr -> float expr

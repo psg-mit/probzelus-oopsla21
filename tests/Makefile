@@ -10,7 +10,7 @@ all: \
 	kalman_normal_main.exe \
 	mtt_main.exe \
 	outlier_main.exe \
-	robot.check \
+	robot_main.exe \
 	slam_array_main.exe \
 	slam_tuple_main.exe \
 	slam_main.exe \
