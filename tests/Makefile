@@ -1,4 +1,4 @@
-all: \
+tests: \
 	coin_outlier_main.exe \
 	coin_main.exe \
 	gaussian_gaussian_main.exe \
