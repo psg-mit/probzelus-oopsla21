@@ -142,6 +142,8 @@ module Evaluator (A : Analysis) = struct
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
       | Evar { name = "Array.empty" } -> ((Rmaybe Rep.empty, RVSet.empty), state)
+      | Evar { name = "List.nil" } ->
+          ((Rmaybe Rep.empty, RVSet.empty), state)
       | Evar { name = "List.nil2" } ->
           ((Rmaybe (Rtuple [ Rep.empty; Rep.empty ]), RVSet.empty), state)
       | Evar { name } ->

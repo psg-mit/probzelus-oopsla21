@@ -50,6 +50,8 @@ let random_order len =
 module List = struct
   let length l = List.length l
 
+  let nil = []
+
   let nil2 = []
 
   let filter (f, l) = List.filter f l
