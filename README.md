@@ -1,6 +1,6 @@
 # Artifact README
 
-This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams". 
+This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams".
 
 This artifact contains:
 - `README.md` this document,
@@ -9,7 +9,7 @@ This artifact contains:
 
 ### Claims Supported by Artifact
 
-The artifact supports all claims in the Evaluation section of the paper. 
+The artifact supports all claims in the Evaluation section of the paper.
 In particular, executing the analysis on the benchmark programs produces the results in Table 1 of the paper indicating whether each program satisfies the m-consumed and unseparated paths properties.
 The implementation of the type system presented in the paper is available in the file `src/compiler/analysis.ml`.
 In addition, all the examples can be compiled and run with delayed sampling.
@@ -19,7 +19,7 @@ In addition, all the examples can be compiled and run with delayed sampling.
 
 First, import `muf-oopsla2021.ova` into your virtualization software. In our testing, we used [VirtualBox](https://www.virtualbox.org) 6.1.22 on macOS Big Sur. This VM is packaged in the Open Virtual Appliance format and can be imported into VirtualBox through `File -> Import Appliance`. The VM contains an installation of Debian Linux and has no particular hardware or network requirements.
 
-Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required). 
+Once the VM boots, it should present a shell as the root user with no password necessary (the root password is `root` in case it is ever required).
 
 The artifact is in the `oopsla2021-artifact` directory.
 The `mufc` compiler is already installed.
@@ -41,14 +41,14 @@ The `tests` directory contains a set of `.muf` programs corresponding to the ben
 $ cd tests
 $ mufc outlier.muf
 ```
-Which 
-1. Displays the results of the static analysis, 
-2. Compiles the muF program to OCaml (`outlier.ml`) 
+Which
+1. Displays the results of the static analysis,
+2. Compiles the muF program to OCaml (`outlier.ml`)
 3. Generates a simple simulation OCaml program (`main.ml`)
 4. Builds an executable that runs the program (`outlier_main.exe`)
 
 ```shell
-$ mufc outlier.muf 
+$ mufc outlier.muf
 -- Analyzing outlier.muf
      x m-consumed analysis failure
      o Unseparated paths analysis success
@@ -78,7 +78,7 @@ Run `make bench` to run the analysis on all the benchmarks presented in the pape
 
 ### Section 2
 
-The muF program of Figure 1 is available in `robot.muf`.
+The muF program of Figure 1 is available in `tests/robot.muf`.
 The stream function `controller` uses a `lqr` function that acts as a place-holder for a Linear–quadratic regulator.
 The analysis does not depend on the implementation of `lqr`, but the implementation requires matrix operations that are not yet supported.
 
@@ -138,9 +138,9 @@ To test the benchmarks presented in Table 1, run the analysis on the following f
 | MTT                  | `mtt.muf`               | x           | o                 |
 | SLAM                 | `slam_array.muf`        | x           | o                 |
 
-The remaining benchmarks in the `tests/` directory are valid programs but are not described in the paper.
+The remaining examples in the `tests/` directory are valid programs but are not described in the paper.
 
-For each benchmark, the compiler returns the outcome of two analyses: m-consumed and unseparated paths analysis.
+For each example, the compiler returns the outcome of two analyses: m-consumed and unseparated paths analysis.
 For this experiment, the `--only-check` option is set to true. The compiler will not try to generate an executable.
 To execute an example, you need to first compile it, e.g.,:
 
@@ -151,10 +151,10 @@ $ ./kalman_normal_main.exe
 
 ## Step by Step Instructions
 
-### Installation 
+### Installation
 
 The muF runtime depends on [ProbZelus](https://github.com/ibm/probzelus).
-Once ProbZelus is installed, in the toplevel directory (containing teh `Makefile` and `muf.opam`), type `make init` to install the artifact from scratch.
+Once ProbZelus is installed, in the toplevel directory (containing the files `Makefile` and `muf.opam`), type `make init` to install the artifact from scratch.
 
 You should now have the `mufc` compiler in your path.
 Run the following command to test your installation:
@@ -176,7 +176,7 @@ val <stream-name> = stream {
 }
 ```
 
-where `stream-name` is the identifier for the stream, `init-val` is the initial value of the stream, and `step-exp` is the expression evaluated at every iteration. `state-pat` is a pattern that binds the input state of the step function and `arg-pat` is a pattern that binds the argument being supplied to the stream. Note that `init-val` must be a syntactic value (such as a numeric literal) or the instantiation of a stream function (`init` or `infer`) and that `state-pat` should be compatible with the type of the initial value.
+where `stream-name` is the identifier for the stream, `init-val` is the initial value of the stream, and `step-exp` is the expression evaluated at every iteration. `state-pat` is a pattern that binds the input state of the step function, and `arg-pat` is a pattern that binds the argument being supplied to the stream. Note that `init-val` must be a syntactic value (such as a numeric literal) or the instantiation of a stream function (`init` or `infer`) and that `state-pat` should be compatible with the type of the initial value.
 
 The step function accepts the current state and a supplied argument to compute a pair of (new state, output value). Inside the step function, the following core constructs can be used:
 
