@@ -157,7 +157,12 @@ $ ./kalman_normal_main.exe
 
 ### Installation
 
-The muF runtime depends on [ProbZelus](https://github.com/ibm/probzelus).
+The `mufc` compiler depends on the `muf` branch of Zelus, and the runtime depends on ProbZelus.
+To install these dependencies see (in particular the docker files in these projects):
+
+- https://github.com/INRIA/zelus/tree/muf
+- https://github.com/ibm/probzelus
+
 Once ProbZelus is installed, in the toplevel directory (containing the files `Makefile` and `muf.opam`), type `make init` to install the artifact from scratch.
 
 You should now have the `mufc` compiler in your path.
