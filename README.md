@@ -149,7 +149,7 @@ To test the benchmarks presented in Table 1, run the analysis on the following f
 The remaining examples in the `tests/` directory are valid programs but are not described in the paper.
 
 For each example, the compiler returns the outcome of two analyses: m-consumed and unseparated paths analysis.
-The `make bench` command sets the `--only-check` option rue. This means the compiler will not try to generate an executable.
+The `make bench` command sets the `--only-check` option to true. This means the compiler will not try to generate an executable.
 To execute an example, you need to first compile it, e.g.,:
 
 ```
