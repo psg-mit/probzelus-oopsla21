@@ -149,7 +149,7 @@ To test the benchmarks presented in Table 1, run the analysis on the following f
 The remaining examples in the `tests/` directory are valid programs but are not described in the paper.
 
 For each example, the compiler returns the outcome of two analyses: m-consumed and unseparated paths analysis.
-For this experiment, the `--only-check` option is set to true. The compiler will not try to generate an executable.
+The `make bench` command sets the `--only-check` option rue. This means the compiler will not try to generate an executable.
 To execute an example, you need to first compile it, e.g.,:
 
 ```
@@ -157,6 +157,7 @@ $ mufc kalman_normal.muf
 $ ./kalman_normal_main.exe
 ```
 
+Alternatively, you may compile all examples to runnable executables by executing `make bench` in the `oopsla2021-artifact` directory.
 ## Step by Step Instructions
 
 ### Installation
