@@ -162,11 +162,7 @@ Alternatively, you may compile all examples to runnable executables by executing
 
 ### Installation
 
-The `mufc` compiler depends on the `muf` branch of Zelus, and the runtime depends on ProbZelus.
-To install these dependencies see (in particular the docker files in these projects):
-
-- https://github.com/INRIA/zelus/tree/muf
-- https://github.com/ibm/probzelus
+The `mufc` compiler depends on the `muf` branch of Zelus, and the runtime depends on ProbZelus. To install the `muf` branch of Zelus, see https://github.com/INRIA/zelus/tree/muf to manually install the dependencies, and then run `opam pin add zelus https://github.com/inria/zelus.git#muf` followed by `opam install zelus`. To install ProbZelus, see https://github.com/ibm/probzelus.
 
 Once ProbZelus is installed, in the toplevel directory (containing the files `Makefile` and `muf.opam`), type `make init` to install the artifact from scratch.
 
