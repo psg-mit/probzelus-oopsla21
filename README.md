@@ -84,6 +84,10 @@ The muF program of Figure 1 is available in `tests/robot.muf` (note that we have
 The stream function `controller` uses a `lqr` function that acts as a place-holder for a linear–quadratic regulator.
 The analysis does not depend on the implementation of `lqr`, but the implementation requires matrix operations that are not yet supported.
 
+### Section 3
+
+The `infer` construct in this artifact has an additional parameter that is not present in the language syntax at the start of 3.1. This extra parameter specifies the number of particles the delayed sampling runtime uses when executing inference. In the paper, the number of particles was set to a fixed constant N in the definition of the operational semantics of `infer` on l.472.
+
 ### Section 4
 
 Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values as described in Section 4.1 using special constructs with the following API:
