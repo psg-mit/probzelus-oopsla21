@@ -157,7 +157,8 @@ $ mufc kalman_normal.muf
 $ ./kalman_normal_main.exe
 ```
 
-Alternatively, you may compile all examples to runnable executables by executing `make bench` in the `oopsla2021-artifact` directory.
+Alternatively, you may compile all examples to runnable executables by executing `make tests`.
+
 ## Step by Step Instructions
 
 ### Installation
