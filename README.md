@@ -80,7 +80,7 @@ Run `make bench` to run the analysis on all the benchmarks presented in the pape
 
 ### Section 2
 
-The muF program of Figure 1 is available in `tests/robot.muf`.
+The muF program of Figure 1 is available in `tests/robot.muf` (note that we have added print statements to `tests/robot.muf` that are not in Figure 1).
 The stream function `controller` uses a `lqr` function that acts as a place-holder for a linear–quadratic regulator.
 The analysis does not depend on the implementation of `lqr`, but the implementation requires matrix operations that are not yet supported.
 
