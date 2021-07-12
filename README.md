@@ -90,7 +90,7 @@ The `infer` construct in this artifact has an additional parameter that is not p
 
 ### Section 4
 
-Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values as described in Section 4.1 using special constructs with the following API:
+Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term values (`'a expr` below) as described in Section 4.1 using special constructs with the following API. Note that although muF is untyped, usage of this API must conform to the types specified here.
 
 
 ```ocaml
