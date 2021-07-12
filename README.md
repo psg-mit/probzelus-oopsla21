@@ -1,10 +1,11 @@
-# Artifact README
+# OOPSLA 2021 Artifact
 
 This artifact is being submitted to support the paper "Statically Bounded-Memory Delayed Sampling for Probabilistic Streams".
 
 This artifact contains:
+
 - `README.md` this document,
-- `muf-oopsla2021.ova` a virtual machine containing source code, pre-built binaries, and benchmark programs,
+- `muf-oopsla2021.ova` a virtual machine containing source code, pre-built binaries, and tests,
 - The source code of the compiler and runtime (`/src`) and the tests (`/tests`).
 
 ### Claims Supported by Artifact
@@ -42,6 +43,7 @@ $ cd tests
 $ mufc outlier.muf
 ```
 Which
+
 1. Displays the results of the static analysis,
 2. Compiles the muF program to OCaml (`outlier.ml`)
 3. Generates a simple simulation OCaml program (`main.ml`)
@@ -79,12 +81,13 @@ Run `make bench` to run the analysis on all the benchmarks presented in the pape
 ### Section 2
 
 The muF program of Figure 1 is available in `tests/robot.muf`.
-The stream function `controller` uses a `lqr` function that acts as a place-holder for a Linear–quadratic regulator.
+The stream function `controller` uses a `lqr` function that acts as a place-holder for a linear–quadratic regulator.
 The analysis does not depend on the implementation of `lqr`, but the implementation requires matrix operations that are not yet supported.
 
 ### Section 4
 
-Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values as described in Section 4.1 using special constructs using the following API:
+Compared to the syntax given in the paper, in the examples, our implementation requires the programmer to explicitly build symbolic term (`'a expr`) values as described in Section 4.1 using special constructs with the following API:
+
 
 ```ocaml
 val const : 'a -> 'a expr
@@ -113,6 +116,7 @@ val bernoulli : float expr -> bool ds_distribution
 ```
 
 Examples:
+
 - `x = sample (bernoulli (0.5))` should be written `x = sample (bernoulli (const (0.5))` (see coin_outlier.muf).
 
 - `x = sample (gaussian (0., 1.))` should be written `x = sample (gaussian (const (0.), 1.)` (see gaussian_gaussian.muf). Note that the `gaussian` construct uses a symbolic value for the mean but a concrete value for the variance.
@@ -164,7 +168,7 @@ $ mufc --help
 
 ### Writing muF programs
 
-The best way to write a new muF test program is to follow the syntax of the examples. Every muF program is a series of `stream` declarations, with the final declaration being the entry point of the program. For example, in `tests/robot.muf`, there are three declarations `kalman`, `controller`, and `robot`, with `robot` being the entry point.
+The best way to write a new muF test program is to follow the syntax of the examples. Every muF program is a series of  `fun` (regular function) and `stream` (stream function) declarations. For example, in `tests/robot.muf`, there are four `stream` declarations: `kalman`, `controller`, `robot`, and `main`; and one `fun` declaration: `lqr`.
 
 Every stream declaration is of the form
 
