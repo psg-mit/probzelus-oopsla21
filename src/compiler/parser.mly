@@ -21,6 +21,7 @@
 %token FACTOR SAMPLE OBSERVE INFER INIT UNFOLD RESET
 %token BOOLT INTT FLOATT DIST UNIT ARRAY LIST
 
+%token DOT
 %token EQUAL ARROW
 %token LPAREN RPAREN LCURLY RCURLY
 %token COMMA SEMI
@@ -43,11 +44,10 @@ decl:
 | VAL x = patt EQUAL e = expr
     { { decl = Ddecl (x, e) } }
 (* Function *)
-| VAL x = patt EQUAL FUN p = patt ARROW e = expr
-    { match x.patt with Pid i -> { decl = Dfun (i, p, e) } | _ -> failwith "Function pattern" }
-| VAL x = patt EQUAL STREAM LCURLY INIT EQUAL e_init = expr SEMI step = IDENT p = patt EQUAL e_step = expr RCURLY
+| VAL x = IDENT EQUAL FUN p = patt ARROW e = expr
+    { { decl = Dfun (x, p, e) } }
+| VAL x = IDENT EQUAL STREAM LCURLY INIT EQUAL e_init = expr SEMI step = IDENT p = patt EQUAL e_step = expr RCURLY
     { begin match step with "step" -> () | _ -> failwith "step expected" end;
-      let x = match x.patt with Pid i -> i | _ -> failwith "name expected" in
       let n =
         { n_type = ([], TKrecord []); (* XXX TODO XXX *)
           n_init = e_init;
@@ -70,7 +70,11 @@ simple_expr:
     { mk_expr (Econst (Cstring s)) }
 (* Variable *)
 | x = IDENT
-    { mk_expr (Evar { name = x }) }
+    { mk_expr (Evar { modul = None; name = x }) }
+| m = IDENT DOT x = IDENT
+    { mk_expr (Evar { modul = Some m; name = x }) }
+| m = IDENT DOT INIT
+    { mk_expr (Evar { modul = Some m; name = "init" }) }
 (* Unit *)
 | LPAREN RPAREN { mk_expr (Etuple []) }
 (* Tuple *)
@@ -90,10 +94,10 @@ simple_expr:
 | OBSERVE LPAREN e1 = simple_expr COMMA e2 = simple_expr RPAREN
     { mk_expr (Eobserve ("prob", e1, e2)) }
 | INFER LPAREN e = simple_expr COMMA m = IDENT RPAREN
-    { mk_expr (Einfer (e, { name = m })) }
+    { mk_expr (Einfer (e, { modul = None; name = m })) }
 (* Streams *)
 | INIT LPAREN m = IDENT RPAREN
-    { mk_expr (Ecall_init (mk_expr (Evar { name = m }))) }
+    { mk_expr (Ecall_init (mk_expr (Evar { modul = None; name = m }))) }
 | UNFOLD LPAREN e1 = simple_expr COMMA e2 = simple_expr RPAREN
     { mk_expr (Ecall_step (e1, e2)) }
 | RESET LPAREN e = simple_expr RPAREN
@@ -111,11 +115,12 @@ expr:
 
 patt:
 | x = IDENT
-    { mk_patt (Pid { name = x }) }
+    { mk_patt (Pid { modul = None; name = x }) }
 | LPAREN p1 = patt COMMA pl = separated_nonempty_list(COMMA, patt) RPAREN
     { mk_patt (Ptuple (p1::pl)) }
 | LPAREN RPAREN { mk_patt (Ptuple []) }
-| x = IDENT COLON t = typ { mk_patt (Ptype (mk_patt (Pid { name = x }), t))}
+| x = IDENT COLON t = typ
+    { mk_patt (Ptype (mk_patt (Pid { modul = None; name = x }), t))}
 | UNDERSCORE { mk_patt Pany }
 
 typ:

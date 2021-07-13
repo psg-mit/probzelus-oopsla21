@@ -34,10 +34,12 @@ let analyze_file n_iters p =
   List.fold_left
     (fun (fctx, mctx, (mcons, unsep)) d ->
       match d.decl with
-      | Dfun ({ name }, p, e) ->
+      | Dfun (name, p, e) ->
           let rs = Analysis.process_fn p e fctx mctx in
-          (SMap.add name rs fctx, mctx, (mcons, unsep))
-      | Dnode ({ name }, _, node) -> (
+          (Analysis.VarMap.add { modul = None; name } rs fctx,
+           mctx,
+           (mcons, unsep))
+      | Dnode (name, _, node) -> (
           let p, e = node.n_step in
           match p.patt with
           | Ptuple [ p_state; p_in ] ->
@@ -45,10 +47,12 @@ let analyze_file n_iters p =
                 Analysis.process_node n_iters node.n_init p_state p_in e fctx
                   mctx
               in
-              (fctx, SMap.add name rs mctx, (mcons && mcons', unsep && unsep'))
+              (fctx,
+               Analysis.VarMap.add { modul = None; name } rs mctx,
+               (mcons && mcons', unsep && unsep'))
           | _ -> failwith "Stream definition lacking step (state, input).")
       | _ -> (fctx, mctx, (mcons, unsep)))
-    (SMap.empty, SMap.empty, (true, true))
+    (Analysis.VarMap.empty, Analysis.VarMap.empty, (true, true))
     p
   |> fun (_, _, (mcons, unsep)) ->
   if mcons then Format.printf "     o m-consumed analysis success@."

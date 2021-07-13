@@ -1,5 +1,8 @@
 open Muf
-module VarMap = Map.Make (String)
+module VarMap = Map.Make (struct
+  type t = identifier
+  let compare = compare
+end)
 module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
 
@@ -103,7 +106,7 @@ end
 let rec get_ctx ctx p rep =
   let open Rep in
   match (p, rep) with
-  | Pid { name }, _ -> VarMap.add name rep ctx
+  | Pid name, _ -> VarMap.add name rep ctx
   | Ptuple [], Rtuple [] -> ctx
   | Ptuple (p :: ps), Rtuple (r :: rs) ->
       get_ctx (get_ctx ctx p.patt r) (Ptuple ps) (Rtuple rs)
@@ -141,12 +144,12 @@ module Evaluator (A : Analysis) = struct
     let rec eval ctx (state : A.t) e : ('p, 'e) Rep.t * A.t =
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
-      | Evar { name = "Array.empty" } -> ((Rmaybe Rep.empty, RVSet.empty), state)
-      | Evar { name = "List.nil" } ->
+      | Evar { modul = Some "Array"; name = "empty" } -> ((Rmaybe Rep.empty, RVSet.empty), state)
+      | Evar { modul = Some "List"; name = "nil" } ->
           ((Rmaybe Rep.empty, RVSet.empty), state)
-      | Evar { name = "List.nil2" } ->
+      | Evar { modul = Some "List"; name = "nil2" } ->
           ((Rmaybe (Rtuple [ Rep.empty; Rep.empty ]), RVSet.empty), state)
-      | Evar { name } ->
+      | Evar name ->
           let _, _, ctx = ctx in
           let v =
             match VarMap.find_opt name ctx with Some v -> v | _ -> Rep.empty
@@ -187,7 +190,8 @@ module Evaluator (A : Analysis) = struct
             | r -> r
           in
           match e1.expr with
-          | Evar { name = "Array.init" } | Evar { name = "List.init" } -> (
+          | Evar { modul = Some "Array"; name = "init" }
+          | Evar { modul = Some "List"; name = "init" } -> (
               let _, state = eval ctx state e2.expr in
               match e2.expr with
               | Etuple [ _; f ] ->
@@ -197,77 +201,81 @@ module Evaluator (A : Analysis) = struct
                   in
                   ((Rmaybe (clear_must rep), own), state)
               | _ -> failwith "init incorrect arguments")
-          | Evar { name = "Array.get" } -> (
+          | Evar { modul = Some "Array"; name = "get" } -> (
               let _, state = eval ctx state e2.expr in
               match e2.expr with
               | Etuple [ a; _ ] ->
                   let (rep, own), state = eval ctx state a.expr in
                   ((get_arg rep, own), state)
               | _ -> failwith "Array.get incorrect arguments")
-          | Evar { name = "List.append" } -> (
+          | Evar { modul = Some "List"; name = "append" } -> (
               match e2.expr with
               | Etuple [ l1; l2 ] ->
                   let (r, o1), state = eval ctx state l1.expr in
                   let (r', o2), state = eval ctx state l2.expr in
                   (Rep.join (r, o1) (r', o2), state)
               | _ -> failwith "List.append incorrect arguments")
-          | Evar { name = "List.map" } -> (
+          | Evar { modul = Some "List"; name = "map" } -> (
               match e2.expr with
               | Etuple [ f; l ] ->
                   let (arg, own'), state = eval ctx state l.expr in
                   let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
+                    let arg' = { modul = None; name = "arg" } in
                     eval
-                      (fctx, mctx, VarMap.add "arg" (get_arg arg) ctx)
+                      (fctx, mctx, VarMap.add arg' (get_arg arg) ctx)
                       state
-                      (Eapp (f, mk_expr (Evar { name = "arg" })))
+                      (Eapp (f, mk_expr (Evar arg')))
                   in
                   ((Rmaybe (clear_must rep), RVSet.union own own'), state)
               | _ -> failwith "List.map incorrect arguments")
-          | Evar { name = "List.iter2" } -> (
+          | Evar { modul = Some "List"; name = "iter2" } -> (
               match e2.expr with
               | Etuple [ f; l1; l2 ] ->
                   let (arg1, own1), state = eval ctx state l1.expr in
                   let (arg2, own2), state = eval ctx state l2.expr in
                   let fctx, mctx, ctx = ctx in
                   let (rep, own), state =
+                    let arg1' = { modul = None; name = "arg1" } in
+                    let arg2' = { modul = None; name = "arg2" } in
                     eval
                       ( fctx,
                         mctx,
-                        VarMap.add "arg1" (get_arg arg1)
-                          (VarMap.add "arg2" (get_arg arg2) ctx) )
+                        VarMap.add arg1' (get_arg arg1)
+                          (VarMap.add arg2' (get_arg arg2) ctx) )
                       state
                       (Eapp
                          ( f,
                            mk_expr
                              (Etuple
                                 [
-                                  mk_expr (Evar { name = "arg1" });
-                                  mk_expr (Evar { name = "arg2" });
+                                  mk_expr (Evar arg1');
+                                  mk_expr (Evar arg2');
                                 ]) ))
                   in
                   ((rep, RVSet.union own (RVSet.union own1 own2)), state)
               | _ -> failwith "List.iter2 incorrect arguments")
-          | Evar { name = "List.filter" } -> (
+          | Evar { modul = Some "List"; name = "filter" } -> (
               match e2.expr with
               | Etuple [ f; l ] ->
                   let (arg, own), state = eval ctx state l.expr in
                   let fctx, mctx, ctx = ctx in
                   let (_, own'), state =
+                    let arg' = { modul = None; name = "arg" } in
                     eval
-                      (fctx, mctx, VarMap.add "arg" (get_arg arg) ctx)
+                      (fctx, mctx, VarMap.add arg' (get_arg arg) ctx)
                       state
                       (Eif
-                         ( mk_expr (Eapp (f, mk_expr (Evar { name = "arg" }))),
+                         ( mk_expr (Eapp (f, mk_expr (Evar arg'))),
                            mk_expr (Econst (Cbool true)),
                            mk_expr (Econst (Cbool false)) ))
                   in
                   ((arg, RVSet.union own own'), state)
               | _ -> failwith "List.filter incorrect arguments")
-          | Evar { name = "List.length" } ->
+          | Evar { modul = Some "List"; name = "length" } ->
               let (_, own), state = eval ctx state e2.expr in
               ((Rep.empty, own), state)
-          | Evar { name = "List.shuffle" } -> (
+          | Evar { modul = Some "List"; name = "shuffle" } -> (
               match e2.expr with
               | Etuple [ order; l ] -> (
                   let (arg, o1), state = eval ctx state order.expr in
@@ -279,11 +287,11 @@ module Evaluator (A : Analysis) = struct
                       ((Rep.Rmaybe r, o), state)
                   | _ -> assert false)
               | _ -> failwith "List.shuffle incorrect arguments")
-          | Evar { name = "eval" } ->
+          | Evar { modul = None;  name = "eval" } ->
               let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
               ((arg, own), state)
-          | Evar { name } -> (
+          | Evar name -> (
               let (arg, own'), state' = eval ctx state e2.expr in
               if List.mem name ops then ((Rscalar (Rep.fold arg), own'), state')
               else
@@ -293,7 +301,7 @@ module Evaluator (A : Analysis) = struct
                     eval
                       (fctx, mctx, get_ctx VarMap.empty p.patt arg)
                       state e.expr
-                | None -> failwith ("Illegal operator " ^ name))
+                | None -> failwith ("Illegal operator " ^ name.name))
           | _ -> failwith "Illegal operator")
       | Elet (p, e, e') ->
           let (rep, own'), state = eval ctx state e.expr in
@@ -312,10 +320,10 @@ module Evaluator (A : Analysis) = struct
               es
           in
           ((Rtuple (List.rev rep), own), state)
-      | Einfer (_, { name }) -> (
+      | Einfer (_, name) -> (
           let _, mctx, _ = ctx in
           match VarMap.find_opt name mctx with
-          | None -> failwith ("Illegal stream " ^ name)
+          | None -> failwith ("Illegal stream " ^ name.name)
           | Some m ->
               if
                 check_infer (erase m.t_state) m.p_state m.p_in m.e m.fctx m.mctx
@@ -323,10 +331,10 @@ module Evaluator (A : Analysis) = struct
               else raise Infer)
       | Ecall_init e -> (
           match e.expr with
-          | Evar { name } -> (
+          | Evar name -> (
               let _, mctx, _ = ctx in
               match VarMap.find_opt name mctx with
-              | None -> failwith ("Illegal stream " ^ name)
+              | None -> failwith ("Illegal stream " ^ name.name)
               | Some m -> ((Rep.Rstream m, RVSet.empty), state))
           | _ -> failwith "Can only init stream definitions")
       | Ecall_reset e ->
@@ -472,6 +480,8 @@ let ops =
     "of_distribution";
     "float_of_int";
   ]
+
+let ops = List.map (fun x -> { modul = None; name = x }) ops
 
 let initial_ctx t_init p_state p_in =
   get_ctx (get_ctx VarMap.empty p_state.patt t_init) p_in.patt (default p_in)
