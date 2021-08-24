@@ -1,8 +1,11 @@
 open Muf
+
 module VarMap = Map.Make (struct
   type t = identifier
+
   let compare = compare
 end)
+
 module RVSet = Set.Make (Int)
 module RVMap = Map.Make (Int)
 
@@ -144,7 +147,8 @@ module Evaluator (A : Analysis) = struct
     let rec eval ctx (state : A.t) e : ('p, 'e) Rep.t * A.t =
       match e with
       | Econst _ -> ((Rep.empty, RVSet.empty), state)
-      | Evar { modul = Some "Array"; name = "empty" } -> ((Rmaybe Rep.empty, RVSet.empty), state)
+      | Evar { modul = Some "Array"; name = "empty" } ->
+          ((Rmaybe Rep.empty, RVSet.empty), state)
       | Evar { modul = Some "List"; name = "nil" } ->
           ((Rmaybe Rep.empty, RVSet.empty), state)
       | Evar { modul = Some "List"; name = "nil2" } ->
@@ -248,10 +252,8 @@ module Evaluator (A : Analysis) = struct
                          ( f,
                            mk_expr
                              (Etuple
-                                [
-                                  mk_expr (Evar arg1');
-                                  mk_expr (Evar arg2');
-                                ]) ))
+                                [ mk_expr (Evar arg1'); mk_expr (Evar arg2') ])
+                         ))
                   in
                   ((rep, RVSet.union own (RVSet.union own1 own2)), state)
               | _ -> failwith "List.iter2 incorrect arguments")
@@ -287,7 +289,7 @@ module Evaluator (A : Analysis) = struct
                       ((Rep.Rmaybe r, o), state)
                   | _ -> assert false)
               | _ -> failwith "List.shuffle incorrect arguments")
-          | Evar { modul = None;  name = "eval" } ->
+          | Evar { modul = None; name = "eval" } ->
               let (arg, own), state = eval ctx state e2.expr in
               let state = A.value (Rep.get arg, state) in
               ((arg, own), state)
@@ -483,20 +485,33 @@ let ops =
 
 let ops = List.map (fun x -> { modul = None; name = x }) ops
 
-let initial_ctx t_init p_state p_in =
-  get_ctx (get_ctx VarMap.empty p_state.patt t_init) p_in.patt (default p_in)
-
 let m_consumed e fctx mctx =
   let module C = Evaluator (Consumed) in
-  let rec eval ctx e = C.eval Consumed.init check_infer ops ctx e
+  let rec eval left_over ctx e =
+    C.eval (left_over, RVSet.empty) check_infer ops ctx e
   and check_infer t_init p_state p_in e fctx mctx =
-    let (rep, _), (add, rem) =
-      eval (fctx, mctx, initial_ctx t_init p_state p_in) e.expr
+    let in_ctx = get_ctx VarMap.empty p_in.patt (default p_in) in
+    let rec run left_over prev_state =
+      let (rep, _), (add, rem) =
+        eval left_over
+          (fctx, mctx, get_ctx in_ctx p_state.patt prev_state)
+          e.expr
+      in
+      let _, may = Rep.fold rep in
+      let left_over' =
+        if RVSet.is_empty left_over then RVSet.inter (RVSet.diff add rem) may
+        else RVSet.diff left_over rem
+      in
+      if RVSet.is_empty left_over' then true
+      else if RVSet.equal left_over left_over' then false
+      else
+        match rep with
+        | Rtuple [ _; new_state ] -> run left_over' new_state
+        | _ -> failwith "step does not return output and new state"
     in
-    let _, may = Rep.fold rep in
-    RVSet.is_empty (RVSet.inter (RVSet.diff add rem) may)
+    run RVSet.empty t_init
   in
-  eval (fctx, mctx, VarMap.empty) e
+  eval RVSet.empty (fctx, mctx, VarMap.empty) e
 
 let unseparated_paths n_iters e fctx mctx =
   let module UP = Evaluator (UnseparatedPaths) in
