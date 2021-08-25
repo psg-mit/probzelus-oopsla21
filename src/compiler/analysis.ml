@@ -491,25 +491,25 @@ let m_consumed e fctx mctx =
     C.eval (left_over, RVSet.empty) check_infer ops ctx e
   and check_infer t_init p_state p_in e fctx mctx =
     let in_ctx = get_ctx VarMap.empty p_in.patt (default p_in) in
-    let rec run left_over prev_state =
+    let rec run left_over prev_state live =
       let (rep, _), (add, rem) =
         eval left_over
           (fctx, mctx, get_ctx in_ctx p_state.patt prev_state)
           e.expr
       in
-      let _, may = Rep.fold rep in
+      let live = Option.value live ~default:(snd (Rep.fold rep)) in
       let left_over' =
-        if RVSet.is_empty left_over then RVSet.inter (RVSet.diff add rem) may
+        if RVSet.is_empty left_over then RVSet.inter (RVSet.diff add rem) live
         else RVSet.diff left_over rem
       in
       if RVSet.is_empty left_over' then true
       else if RVSet.equal left_over left_over' then false
       else
         match rep with
-        | Rtuple [ _; new_state ] -> run left_over' new_state
+        | Rtuple [ _; new_state ] -> run left_over' new_state (Some live)
         | _ -> failwith "step does not return output and new state"
     in
-    run RVSet.empty t_init
+    run RVSet.empty t_init None
   in
   eval RVSet.empty (fctx, mctx, VarMap.empty) e
 
