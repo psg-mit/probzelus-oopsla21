@@ -521,12 +521,60 @@ let unseparated_paths n_iters e fctx mctx =
     let rec run (p, sep) prev_state prev_max n_iters =
       n_iters > 0
       &&
-      let (rep, _), (p, sep) =
+      let (rep, _), (p', sep) =
         eval (p, sep)
           (fctx, mctx, get_ctx in_ctx p_state.patt prev_state)
           e.expr
       in
       let _, may = Rep.fold rep in
+      let rec similar prev_state new_state =
+        let open Rep in
+        match (prev_state, new_state) with
+        | Rscalar (_, ub), Rscalar (_, ub2) ->
+            RVSet.fold (fun i -> RVMap.add i ub2) ub RVMap.empty
+        | Rtuple rs1, Rtuple rs2 ->
+            List.fold_left2
+              (fun acc r1 r2 ->
+                RVMap.union
+                  (fun _ x y -> Some (RVSet.union x y))
+                  acc (similar r1 r2))
+              RVMap.empty rs1 rs2
+        | Rstream { t_state = r1; _ }, Rstream { t_state = r2; _ }
+        | Rmaybe r1, Rmaybe r2 ->
+            similar r1 r2
+        | Rbounded, Rbounded -> RVMap.empty
+        | _, _ -> failwith "Incompatible states"
+      in
+      let varpath new_state =
+        let similar =
+          let s = similar prev_state new_state in
+          fun v ->
+            match RVMap.find_opt v s with
+            | None -> RVSet.singleton v
+            | Some x -> x
+        in
+        let equal x1 x2 x1' x2' =
+          (not (RVSet.mem x1 may))
+          || RVSet.mem x2 sep
+          ||
+          try
+            RVMap.find x1 (RVMap.find x2 p)
+            = try RVMap.find x1' (RVMap.find x2' p') with Not_found -> 0
+          with Not_found -> true
+        in
+        RVMap.for_all
+          (fun dst srcs ->
+            RVSet.for_all
+              (fun dst' ->
+                RVMap.for_all
+                  (fun src _ ->
+                    RVSet.for_all
+                      (fun src' -> equal src dst src' dst')
+                      (similar src))
+                  srcs)
+              (similar dst))
+          p'
+      in
       let new_max =
         RVMap.fold
           (fun _ srcs ->
@@ -534,13 +582,13 @@ let unseparated_paths n_iters e fctx mctx =
               (fun src len acc ->
                 if RVSet.mem src may then max len acc else acc)
               srcs)
-          (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
+          (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p')
           prev_max
       in
-      new_max = prev_max
-      ||
       match rep with
-      | Rtuple [ _; new_state ] -> run (p, sep) new_state new_max (n_iters - 1)
+      | Rtuple [ _; new_state ] ->
+          (new_max = prev_max && varpath new_state)
+          || run (p', sep) new_state new_max (n_iters - 1)
       | _ -> failwith "step does not return output and new state"
     in
     run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters
