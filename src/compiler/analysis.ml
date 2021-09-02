@@ -553,14 +553,14 @@ let unseparated_paths n_iters e fctx mctx =
             | None -> RVSet.singleton v
             | Some x -> x
         in
-        let equal x1 x2 x1' x2' =
+        let satisfy x1 x2 x1' x2' =
           (not (RVSet.mem x1 may))
           || RVSet.mem x2 sep
           ||
-          try
-            RVMap.find x1 (RVMap.find x2 p)
-            = try RVMap.find x1' (RVMap.find x2' p') with Not_found -> 0
-          with Not_found -> true
+          let get_path x1 x2 p =
+            try RVMap.find x1 (RVMap.find x2 p) with Not_found -> 0
+          in
+          get_path x1 x2 p <= get_path x1' x2' p'
         in
         RVMap.for_all
           (fun dst srcs ->
@@ -569,7 +569,7 @@ let unseparated_paths n_iters e fctx mctx =
                 RVMap.for_all
                   (fun src _ ->
                     RVSet.for_all
-                      (fun src' -> equal src dst src' dst')
+                      (fun src' -> satisfy src dst src' dst')
                       (similar src))
                   srcs)
               (similar dst))
