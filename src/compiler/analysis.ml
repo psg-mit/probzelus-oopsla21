@@ -87,6 +87,12 @@ module Rep = struct
     | Rmaybe r ->
         let _, may = fold r in
         (RVSet.empty, may)
+
+  let rec size = function
+    | Rscalar _ | Rbounded -> 1
+    | Rtuple rs -> List.fold_left ( + ) 0 (List.map size rs)
+    | Rstream m -> size m.t_state
+    | Rmaybe r -> size r
 end
 
 module type Analysis = sig
@@ -518,7 +524,7 @@ let unseparated_paths n_iters e fctx mctx =
   let rec eval (p, sep) ctx e = UP.eval (p, sep) check_infer ops ctx e
   and check_infer t_init p_state p_in e fctx mctx =
     let in_ctx = get_ctx VarMap.empty p_in.patt (default p_in) in
-    let rec run (p, sep) prev_state prev_max n_iters =
+    let rec run (p, sep) prev_state prev_max n_iters run_iters =
       n_iters > 0
       &&
       let (rep, _), (p, sep) =
@@ -537,13 +543,14 @@ let unseparated_paths n_iters e fctx mctx =
           (RVMap.filter (fun v _ -> not (RVSet.mem v sep)) p)
           prev_max
       in
-      new_max = prev_max
+      (new_max = prev_max && run_iters > new_max * Rep.size rep)
       ||
       match rep with
-      | Rtuple [ _; new_state ] -> run (p, sep) new_state new_max (n_iters - 1)
+      | Rtuple [ _; new_state ] ->
+          run (p, sep) new_state new_max (n_iters - 1) (run_iters + 1)
       | _ -> failwith "step does not return output and new state"
     in
-    run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters
+    run (UnseparatedPaths.init t_init) t_init Int.min_int n_iters 0
   in
   eval (UnseparatedPaths.init Rep.empty) (fctx, mctx, VarMap.empty) e
 
