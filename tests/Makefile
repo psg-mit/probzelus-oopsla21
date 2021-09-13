@@ -28,10 +28,7 @@ bench: \
 	 gaussian_gaussian.check \
 	 outlier.check \
 	 mtt.check \
-	 slam_array.check \
-	 up_catchup.check \
-	 up_catchup_delay.check
-
+	 slam_array.check 
 
 %.check: %.muf
 	@mufc --only-check $<
