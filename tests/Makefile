@@ -15,7 +15,9 @@ tests: \
 	slam_tuple_main.exe \
 	slam_main.exe \
 	tuple_main.exe \
-	up_multiple_its_main.exe
+	up_multiple_its_main.exe \
+	up_catchup_main.exe \
+	up_catchup_delay_main.exe
 
 bench: \
 	 kalman_normal.check \
@@ -27,8 +29,8 @@ bench: \
 	 outlier.check \
 	 mtt.check \
 	 slam_array.check \
-	 error.check \
-	 error2.check
+	 up_catchup.check \
+	 up_catchup_delay.check
 
 
 %.check: %.muf
